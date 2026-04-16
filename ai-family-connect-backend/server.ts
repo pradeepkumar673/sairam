@@ -11,8 +11,6 @@ import { initSocket } from "./src/config/socket";
 
 // ── Cron jobs ─────────────────────────────────────────────────────
 import { startMedicineReminderJob, startMissedDoseJob, startRefillReminderJob } from "./src/jobs/medicineReminder.job";
-import { startCheckInReminderJob, startNoCheckInAlertJob } from "./src/jobs/checkInReminder.job";
-import { startEventReminderJob } from "./src/jobs/eventReminder.job";
 
 const PORT = parseInt(process.env.PORT || "5000", 10);
 
@@ -33,9 +31,6 @@ const start = async (): Promise<void> => {
   startMedicineReminderJob();
   startMissedDoseJob();
   startRefillReminderJob();
-  startCheckInReminderJob();
-  startNoCheckInAlertJob();
-  startEventReminderJob();
 
   // 6. Listen
   httpServer.listen(PORT, () => {

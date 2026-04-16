@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { SOSAlert } from "../models/SOSAlert";
-import { FallEvent } from "../models/FallEvent";
-import { FamilyLink } from "../models/FamilyLink";
-import { User } from "../models/User";
+import SOSAlert from "../models/SOSAlert";
+import FallEvent from "../models/FallEvent";
+import FamilyLink from "../models/FamilyLink";
+import User from "../models/User";
 
 // ══════════════════════════════════════════════════════════
 //  ONE-TAP SOS
@@ -22,7 +22,7 @@ export const triggerSOS = async (req: AuthRequest, res: Response): Promise<void>
     const userId = req.user?.id;
 
     // Fetch the user's name for notification content
-    const user = await User.findById(userId).select("name");
+    const user = await User.findById(userId).select("firstName lastName");
     if (!user) {
       res.status(404).json({ success: false, message: "User not found." });
       return;
@@ -31,7 +31,7 @@ export const triggerSOS = async (req: AuthRequest, res: Response): Promise<void>
     // Create SOS record
     const sosAlert = await SOSAlert.create({
       triggeredBy: userId,
-      message: message || `${user.name} has triggered an SOS alert and needs help!`,
+      message: message || `🚨 ${user.firstName} has triggered an SOS alert!`,
       location: {
         latitude: latitude || null,
         longitude: longitude || null,
@@ -47,7 +47,7 @@ export const triggerSOS = async (req: AuthRequest, res: Response): Promise<void>
       status: "accepted",
     }).populate("requester recipient", "_id name");
 
-    const familyMemberIds: string[] = links.map((link) => {
+    const familyMemberIds: string[] = links.map((link: any) => {
       const requester = link.requester as any;
       const recipient = link.recipient as any;
       return requester._id.toString() === userId
@@ -68,7 +68,7 @@ export const triggerSOS = async (req: AuthRequest, res: Response): Promise<void>
       familyMemberIds.forEach((memberId) => {
         io.to(`user_${memberId}`).emit("sos_alert", {
           alertId: sosAlert._id,
-          triggeredBy: { id: userId, name: user.name },
+          triggeredBy: { id: userId, name: `${user.firstName} ${user.lastName}` },
           message: sosAlert.message,
           location: sosAlert.location,
           timestamp: sosAlert.createdAt,
@@ -164,19 +164,19 @@ export const reportFallEvent = async (req: AuthRequest, res: Response): Promise<
     const { latitude, longitude, severity, deviceData, description } = req.body;
     const userId = req.user?.id;
 
-    const user = await User.findById(userId).select("name");
+    const user = await User.findById(userId).select("firstName");
 
     const fallEvent = await FallEvent.create({
-      user: userId,
+      userId,
       location: {
         latitude: latitude || null,
         longitude: longitude || null,
       },
       severity: severity || "unknown",   // "low" | "medium" | "high" | "unknown"
       deviceData: deviceData || null,    // raw accelerometer/gyroscope data
-      description: description || "A fall was detected.",
+      description: description || "Automatic fall detection trigger.",
       status: "unreviewed",
-    });
+    } as any);
 
     // Find linked family members and notify
     const links = await FamilyLink.find({
@@ -184,7 +184,7 @@ export const reportFallEvent = async (req: AuthRequest, res: Response): Promise<
       status: "accepted",
     });
 
-    const familyMemberIds: string[] = links.map((link) => {
+    const familyMemberIds: string[] = links.map((link: any) => {
       const requester = link.requester as any;
       const recipient = link.recipient as any;
       return requester.toString() === userId
@@ -197,7 +197,7 @@ export const reportFallEvent = async (req: AuthRequest, res: Response): Promise<
       familyMemberIds.forEach((memberId) => {
         io.to(`user_${memberId}`).emit("fall_detected", {
           eventId: fallEvent._id,
-          user: { id: userId, name: user?.name },
+          user: { id: userId, name: user?.firstName },
           severity: fallEvent.severity,
           description: fallEvent.description,
           location: fallEvent.location,
@@ -296,7 +296,7 @@ export const uploadInjuryPhoto = async (req: AuthRequest, res: Response): Promis
 
     // Save injury report to a FallEvent with type "injury_photo"
     const injuryRecord = await FallEvent.create({
-      user: req.user?.id,
+      userId: req.user?.id,
       type: "injury_photo",             // distinguishes from sensor-based falls
       injuryPhotoUrl: imageUrl,
       bodyPart: bodyPart || "unspecified",
@@ -327,7 +327,7 @@ export const uploadInjuryPhoto = async (req: AuthRequest, res: Response): Promis
 export const getInjuryPhotos = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const records = await FallEvent.find({
-      user: req.user?.id,
+      userId: req.user?.id,
       type: "injury_photo",
     }).sort({ createdAt: -1 });
 
@@ -361,7 +361,7 @@ export const reportPostureAlert = async (req: AuthRequest, res: Response): Promi
 
     // Store posture alerts as a special FallEvent type
     const postureAlert = await FallEvent.create({
-      user: userId,
+      userId,
       type: "posture_alert",
       postureType: type,
       duration: duration || null,      // in seconds
@@ -370,17 +370,17 @@ export const reportPostureAlert = async (req: AuthRequest, res: Response): Promi
       severity: type === "no_movement" ? "medium" : "low",
       status: "unreviewed",
       location: {},
-    });
+    } as any);
 
     // Notify family for "no_movement" which could indicate a serious issue
     if (type === "no_movement") {
-      const user = await User.findById(userId).select("name");
+      const user = await User.findById(userId).select("firstName");
       const links = await FamilyLink.find({
         $or: [{ requester: userId }, { recipient: userId }],
         status: "accepted",
       });
 
-      const familyMemberIds: string[] = links.map((link) => {
+      const familyMemberIds: string[] = links.map((link: any) => {
         const req_ = link.requester as any;
         const rec_ = link.recipient as any;
         return req_.toString() === userId ? rec_.toString() : req_.toString();
@@ -391,9 +391,9 @@ export const reportPostureAlert = async (req: AuthRequest, res: Response): Promi
         familyMemberIds.forEach((memberId) => {
           io.to(`user_${memberId}`).emit("posture_alert", {
             alertId: postureAlert._id,
-            user: { id: userId, name: user?.name },
+            user: { id: userId, name: user?.firstName },
             type,
-            message: `No movement detected for ${duration ? `${duration} seconds` : "an extended period"}.`,
+            message: `⚠️ Fall detected for ${user?.firstName}. Immediate attention required.`,
             timestamp: postureAlert.createdAt,
           });
         });

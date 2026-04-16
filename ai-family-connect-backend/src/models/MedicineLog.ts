@@ -228,7 +228,7 @@ MedicineLogSchema.index({ userId: 1, status: 1 });
 MedicineLogSchema.index({ location: "2dsphere" });
 
 // ─── Pre-save: auto-calculate delay ──────────────────────────────────────────
-MedicineLogSchema.pre<IMedicineLog>("save", function (next) {
+MedicineLogSchema.pre<IMedicineLog>("save", function (next: any) {
   if (this.takenAt && this.scheduledAt) {
     this.delayMinutes = Math.round(
       (this.takenAt.getTime() - this.scheduledAt.getTime()) / 60000

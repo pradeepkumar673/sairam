@@ -11,7 +11,7 @@ import {
   getUnreadCount,
   uploadChatMedia,
 } from "../controllers/chat.controller";
-import { uploadMiddleware } from "../middleware/upload.middleware";
+import { chatMediaUpload } from "../config/multer";
 
 const router = Router();
 
@@ -37,7 +37,7 @@ router.get("/:familyId/unread", getUnreadCount);
  */
 router.post(
   "/:familyId/media",
-  uploadMiddleware.single("media"),
+  chatMediaUpload.single("media"),
   uploadChatMedia
 );
 

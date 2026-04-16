@@ -9,6 +9,10 @@ import jwt from "jsonwebtoken";
 import { AppError } from "../utils/AppError";
 import User from "../models/User";
 
+export interface AuthRequest extends Request {
+  user?: any;
+}
+
 interface JwtPayload {
   id: string;
   familyId?: string;
@@ -69,7 +73,7 @@ export const verifySocketToken = async (
     socket.data.userId = (user._id as any).toString();
     socket.data.familyId = (user as any).familyId?.toString();
     socket.data.role = user.role;
-    socket.data.name = user.name;
+    socket.data.name = `${user.firstName} ${user.lastName}`;
 
     next();
   } catch (err) {

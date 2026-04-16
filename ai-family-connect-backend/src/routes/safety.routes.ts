@@ -11,13 +11,13 @@ import {
   reportPostureAlert,
   getPostureAlerts,
 } from "../controllers/safety.controller";
-import { protectRoute } from "../middleware/auth.middleware";
-import { uploadInjuryPhoto as uploadInjuryPhotoMiddleware } from "../middleware/upload.middleware";
+import { protect } from "../middleware/auth.middleware";
+import { injuryPhotoUpload } from "../config/multer";
 
 const router = Router();
 
 // All safety routes require authentication
-router.use(protectRoute);
+router.use(protect);
 
 // ─────────────────────────────────────────────
 // ONE-TAP SOS
@@ -77,7 +77,7 @@ router.get("/fall-events", getFallEvents);
  * @desc    Upload an injury photo for Gemini AI analysis
  * @form    injuryImage (file), bodyPart?, description?
  */
-router.post("/injury-photo", uploadInjuryPhotoMiddleware, uploadInjuryPhoto);
+router.post("/injury-photo", injuryPhotoUpload.single("injuryImage"), uploadInjuryPhoto);
 
 /**
  * @route   GET /api/safety/injury-photos

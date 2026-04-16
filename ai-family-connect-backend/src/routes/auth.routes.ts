@@ -6,7 +6,7 @@ import {
   updateProfile,
   changePassword,
 } from "../controllers/auth.controller";
-import { protectRoute } from "../middleware/auth.middleware";
+import { protect } from "../middleware/auth.middleware";
 
 const router = Router();
 
@@ -36,20 +36,20 @@ router.post("/login", login);
  * @route   GET /api/auth/me
  * @desc    Get current logged-in user's full profile
  */
-router.get("/me", protectRoute, getMe);
+router.get("/me", protect, getMe);
 
 /**
  * @route   PUT /api/auth/update-profile
  * @desc    Update user profile fields (name, phone, photo, etc.)
  * @body    { name?, phone?, dateOfBirth?, profilePhoto? }
  */
-router.put("/update-profile", protectRoute, updateProfile);
+router.put("/update-profile", protect, updateProfile);
 
 /**
  * @route   PUT /api/auth/change-password
  * @desc    Change user password (requires current password)
  * @body    { currentPassword, newPassword }
  */
-router.put("/change-password", protectRoute, changePassword);
+router.put("/change-password", protect, changePassword);
 
 export default router;

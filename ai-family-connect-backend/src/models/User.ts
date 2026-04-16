@@ -257,7 +257,7 @@ const UserSchema = new Schema<IUser, IUserModel>(
     timestamps: true,
     toJSON: {
       virtuals: true,
-      transform: (_doc, ret) => {
+      transform: (_doc, ret: any) => {
         // Strip sensitive fields before any JSON serialisation
         delete ret.password;
         delete ret.passwordResetToken;
@@ -315,7 +315,7 @@ UserSchema.statics.findActiveFamilyMembers = function (familyId: Types.ObjectId)
 };
 
 // ─── Pre-save Hook (password changed timestamp) ───────────────────────────────
-UserSchema.pre<IUser>("save", function (next) {
+UserSchema.pre<IUser>("save", function (next: any) {
   if (this.isModified("password") && !this.isNew) {
     this.passwordChangedAt = new Date(Date.now() - 1000);
   }

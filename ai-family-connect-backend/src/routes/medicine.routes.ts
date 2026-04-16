@@ -12,13 +12,13 @@ import {
   getRefillAlerts,
   restockMedicine,
 } from "../controllers/medicine.controller";
-import { protectRoute } from "../middleware/auth.middleware";
-import { uploadDoctorSlip } from "../middleware/upload.middleware";
+import { protect } from "../middleware/auth.middleware";
+import { doctorSlipUpload } from "../config/multer";
 
 const router = Router();
 
 // All medicine routes are protected
-router.use(protectRoute);
+router.use(protect);
 
 // ─────────────────────────────────────────────
 // CRUD
@@ -40,7 +40,7 @@ router.get("/:id/logs", getMedicineLogs);
 // ─────────────────────────────────────────────
 // Doctor Slip Scanner
 // ─────────────────────────────────────────────
-router.post("/scan-slip", uploadDoctorSlip, scanDoctorSlip);
+router.post("/scan-slip", doctorSlipUpload.single("slipImage"), scanDoctorSlip);
 
 // ─────────────────────────────────────────────
 // Refill Guardian

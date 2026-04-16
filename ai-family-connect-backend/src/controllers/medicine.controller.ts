@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { Medicine } from "../models/Medicine";
-import { MedicineLog } from "../models/MedicineLog";
-import { FamilyLink } from "../models/FamilyLink";
+import Medicine from "../models/Medicine";
+import MedicineLog from "../models/MedicineLog";
+import FamilyLink from "../models/FamilyLink";
 import fs from "fs";
 
 // ══════════════════════════════════════════════════════════
@@ -251,7 +251,7 @@ export const getMedicineLogs = async (req: AuthRequest, res: Response): Promise<
 
     // Calculate compliance percentage
     const total = logs.length;
-    const taken = logs.filter((l) => l.status === "taken").length;
+    const taken = logs.filter((l: any) => l.status === "taken").length;
     const complianceRate = total > 0 ? Math.round((taken / total) * 100) : 0;
 
     res.status(200).json({
@@ -259,8 +259,8 @@ export const getMedicineLogs = async (req: AuthRequest, res: Response): Promise<
       complianceRate: `${complianceRate}%`,
       total,
       taken,
-      missed: logs.filter((l) => l.status === "missed").length,
-      skipped: logs.filter((l) => l.status === "skipped").length,
+      missed: logs.filter((l: any) => l.status === "missed").length,
+      skipped: logs.filter((l: any) => l.status === "skipped").length,
       logs,
     });
   } catch (error: any) {
@@ -288,9 +288,9 @@ export const getComplianceSummary = async (req: AuthRequest, res: Response): Pro
     }).populate("medicine", "name dosage unit");
 
     const total = logs.length;
-    const taken = logs.filter((l) => l.status === "taken").length;
-    const missed = logs.filter((l) => l.status === "missed").length;
-    const skipped = logs.filter((l) => l.status === "skipped").length;
+    const taken = logs.filter((l: any) => l.status === "taken").length;
+    const missed = logs.filter((l: any) => l.status === "missed").length;
+    const skipped = logs.filter((l: any) => l.status === "skipped").length;
     const complianceRate = total > 0 ? Math.round((taken / total) * 100) : 0;
 
     res.status(200).json({
@@ -383,7 +383,7 @@ export const getRefillAlerts = async (req: AuthRequest, res: Response): Promise<
       },
     });
 
-    const alerts = lowMedicines.map((med) => ({
+    const alerts = lowMedicines.map((med: any) => ({
       medicineId: med._id,
       name: med.name,
       dosage: `${med.dosage} ${med.unit}`,

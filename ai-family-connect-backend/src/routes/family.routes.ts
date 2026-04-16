@@ -8,12 +8,12 @@ import {
   removeFamilyMember,
   getMyInviteCode,
 } from "../controllers/family.controller";
-import { protectRoute } from "../middleware/auth.middleware";
+import { protect } from "../middleware/auth.middleware";
 
 const router = Router();
 
 // All family routes require authentication
-router.use(protectRoute);
+router.use(protect);
 
 // ─────────────────────────────────────────────
 // Invite / Link Routes

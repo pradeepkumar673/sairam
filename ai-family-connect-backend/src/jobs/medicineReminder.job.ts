@@ -6,7 +6,7 @@
 
 import cron from "node-cron";
 import Medicine from "../models/Medicine";
-import { MedicineLog } from "../models/MedicineLog";
+import MedicineLog from "../models/MedicineLog";
 import { getIO } from "../config/socket";
 import { emitFamilyAlert, emitUserAlert } from "../sockets/alert.socket";
 
@@ -28,8 +28,9 @@ export const startMedicineReminderJob = (): void => {
     try {
       // Find all active medicines whose schedule contains the current time
       const medicines = await Medicine.find({
-        isActive: true,
-        scheduleTimes: currentTime, // array of "HH:MM" strings
+        status: "active",
+        isDeleted: false,
+        scheduledTimes: currentTime, // array of "HH:MM" strings
       }).populate("userId", "_id name familyId");
 
       for (const med of medicines) {
@@ -102,8 +103,9 @@ export const startMissedDoseJob = (): void => {
       today.setHours(0, 0, 0, 0);
 
       const medicines = await Medicine.find({
-        isActive: true,
-        scheduleTimes: missedTime,
+        status: "active",
+        isDeleted: false,
+        scheduledTimes: missedTime,
       }).populate("userId", "_id name familyId");
 
       for (const med of medicines) {
@@ -170,8 +172,9 @@ export const startRefillReminderJob = (): void => {
   cron.schedule("0 9 * * *", async () => {
     try {
       const lowStockMeds = await Medicine.find({
-        isActive: true,
-        stockCount: { $lte: 5 },
+        status: "active",
+        isDeleted: false,
+        "refillInfo.currentStock": { $lte: 5 },
       }).populate("userId", "_id name familyId");
 
       const io = getIO();
@@ -188,8 +191,8 @@ export const startRefillReminderJob = (): void => {
           severity: "warning",
           medicineId: med._id,
           medicineName: med.name,
-          stockCount: med.stockCount,
-          message: `🔴 Only ${med.stockCount} doses of ${med.name} remaining. Please refill soon.`,
+          stockCount: (med as any).refillInfo?.currentStock,
+          message: `🔴 Only ${(med as any).refillInfo?.currentStock} doses of ${med.name} remaining. Please refill soon.`,
         });
 
         if (familyId) {
@@ -197,10 +200,10 @@ export const startRefillReminderJob = (): void => {
             type: "LOW_STOCK",
             severity: "warning",
             forUserId: userId,
-            forUserName: user.name,
+            forUserName: (user as any).firstName ?? user.name,
             medicineName: med.name,
-            stockCount: med.stockCount,
-            message: `🔴 ${user.name}'s ${med.name} is running low (${med.stockCount} left).`,
+            stockCount: (med as any).refillInfo?.currentStock,
+            message: `🔴 ${(user as any).firstName ?? user.name}'s ${med.name} is running low (${(med as any).refillInfo?.currentStock} left).`,
           });
         }
       }

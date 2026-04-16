@@ -4,7 +4,7 @@
  */
 
 import { Server as SocketServer, Socket } from "socket.io";
-import { MedicineLog } from "../models/MedicineLog";
+import MedicineLog from "../models/MedicineLog";
 import Medicine from "../models/Medicine";
 
 export const registerAlertSocket = (io: SocketServer, socket: Socket): void => {
@@ -16,9 +16,10 @@ export const registerAlertSocket = (io: SocketServer, socket: Socket): void => {
       // Find medicines with stock <= 5 for this user
       const lowStock = await Medicine.find({
         userId,
-        stockCount: { $lte: 5 },
-        isActive: true,
-      }).select("name stockCount dosage");
+        "refillInfo.currentStock": { $lte: 7 },
+        status: "active",
+        isDeleted: false,
+      }).select("name refillInfo dosageDetails");
 
       if (lowStock.length > 0) {
         // Alert the entire family

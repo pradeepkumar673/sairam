@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -13,21 +13,20 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@config/*": ["src/config/*"],
-      "@models/*": ["src/models/*"],
-      "@routes/*": ["src/routes/*"],
+      "@config/*":      ["src/config/*"],
+      "@models/*":      ["src/models/*"],
+      "@routes/*":      ["src/routes/*"],
       "@controllers/*": ["src/controllers/*"],
-      "@middleware/*": ["src/middleware/*"],
-      "@services/*": ["src/services/*"],
-      "@utils/*": ["src/utils/*"],
-      "@types/*": ["src/types/*"],
-      "@validators/*": ["src/validators/*"],
-      "@sockets/*": ["src/sockets/*"],
-      "@jobs/*": ["src/jobs/*"]
+      "@middleware/*":  ["src/middleware/*"],
+      "@utils/*":       ["src/utils/*"],
+      "@validators/*":  ["src/validators/*"],
+      "@sockets/*":     ["src/sockets/*"],
+      "@jobs/*":        ["src/jobs/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/uploads"]
+  "include": ["src/**/*", "server.ts"],
+  "exclude": ["node_modules", "dist", "uploads"]
 }
