@@ -2,7 +2,10 @@ import axios from "axios";
 import { 
   MoodMirrorResult, 
   VoiceEmotionResult, 
-  DoctorSlipResult 
+  DoctorSlipResult,
+  InjuryAnalysisResult,
+  RecipeSuggestion,
+  SleepStoryResult
 } from "./gemini.helper";
 
 const HF_API_URL = "https://api-inference.huggingface.co/models";
@@ -172,3 +175,164 @@ Return ONLY valid JSON in this exact format:
   
   return JSON.parse(jsonString) as DoctorSlipResult;
 }
+
+/**
+ * Wound/Injury Analysis via Hugging Face Vision API (Qwen2-VL)
+ */
+export async function analyzeInjuryHF(imageBase64: string): Promise<InjuryAnalysisResult> {
+  const modelId = "Qwen/Qwen2-VL-7B-Instruct"; // High performance vision model
+  const url = `${HF_API_URL}/${modelId}/v1/chat/completions`;
+
+  const requestBody = {
+    model: modelId,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `You are a medical first-aid AI assistant for a family safety app. Analyze this injury photo.
+Return ONLY valid JSON in this exact format:
+{
+  "severity": "minor|moderate|severe|critical",
+  "possibleInjury": "e.g., bruise, laceration, burn, sprain, fracture",
+  "immediateAction": "Most important single action to take RIGHT NOW",
+  "requiresDoctor": true,
+  "requiresEmergency": false,
+  "careInstructions": ["Step 1", "Step 2", "Step 3"]
+}
+Be conservative; when in doubt, recommend seeing a doctor.`
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
+            }
+          }
+        ]
+      }
+    ],
+    max_tokens: 800,
+    temperature: 0.1
+  };
+
+  const response = await axios.post(url, requestBody, {
+    headers: getHFHeaders(),
+    timeout: 30000,
+  });
+
+  const rawText = response.data?.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error("No textual response from HF Vision");
+
+  const match = rawText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  const jsonString = match ? match[0] : rawText;
+  
+  return JSON.parse(jsonString) as InjuryAnalysisResult;
+}
+
+/**
+ * Recipe Suggestions via Hugging Face Vision/Text API (Qwen2-VL)
+ */
+export async function suggestRecipeHF(ingredients: string[], restrictions?: string[], mood?: string): Promise<RecipeSuggestion[]> {
+  const modelId = "Qwen/Qwen2-VL-7B-Instruct";
+  const url = `${HF_API_URL}/${modelId}/v1/chat/completions`;
+
+  const requestBody = {
+    model: modelId,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `You are a nutritionist AI. Suggest 3 healthy, easy recipes using: ${ingredients.join(", ")}.
+Dietary restrictions: ${restrictions?.join(", ") || "none"}. Mood context: ${mood || "neutral"}.
+
+Return ONLY valid JSON array:
+[
+  {
+    "recipeName": "...",
+    "ingredients": ["item with quantity", ...],
+    "instructions": ["Step 1", "Step 2", ...],
+    "nutritionBenefits": "...",
+    "suitableFor": ["condition1", ...],
+    "prepTime": "e.g., 20 minutes"
+  }
+]`
+          }
+        ]
+      }
+    ],
+    max_tokens: 1500,
+    temperature: 0.2
+  };
+
+  const response = await axios.post(url, requestBody, {
+    headers: getHFHeaders(),
+    timeout: 30000,
+  });
+
+  const rawText = response.data?.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error("No textual response from HF Recipes");
+
+  const match = rawText.match(/\[[\s\S]*\]/);
+  const jsonString = match ? match[0] : rawText;
+  
+  return JSON.parse(jsonString) as RecipeSuggestion[];
+}
+
+/**
+ * Sleep Story Generation via Hugging Face Vision/Text API (Qwen2-VL)
+ */
+export async function generateSleepStoryHF(userName: string, mood?: string, preferences?: any): Promise<SleepStoryResult> {
+  const modelId = "Qwen/Qwen2-VL-7B-Instruct"; // High capacity for creative writing
+  const url = `${HF_API_URL}/${modelId}/v1/chat/completions`;
+
+  const theme = preferences?.theme || "nature";
+  const length = preferences?.length || "medium";
+  const words = length === "short" ? 150 : length === "long" ? 500 : 300;
+
+  const requestBody = {
+    model: modelId,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `You are a professional bedtime story narrator for elderly people. Write a calming, gentle, and immersive sleep story for ${userName}.
+Theme: ${theme}
+Approximate length: ${words} words.
+Mood context: ${mood || "neutral"}.
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Soothing title of the story",
+  "story": "The full story text...",
+  "duration": "e.g., 5 min read",
+  "theme": "${theme}"
+}`
+          }
+        ]
+      }
+    ],
+    max_tokens: 2000,
+    temperature: 0.7
+  };
+
+  const response = await axios.post(url, requestBody, {
+    headers: getHFHeaders(),
+    timeout: 45000,
+  });
+
+  const rawText = response.data?.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error("No textual response from HF Sleep Stories");
+
+  const match = rawText.match(/\{[\s\S]*\}/);
+  const jsonString = match ? match[0] : rawText;
+  
+  return JSON.parse(jsonString) as SleepStoryResult;
+}
+
+
+

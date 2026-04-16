@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Smile, Bell, FileText, AlertTriangle } from 'lucide-react';
+import { Smile, Bell, FileText, AlertTriangle, Mic, ChefHat, Moon, ShieldAlert, Camera, Coffee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MoodAnalyzer from '../components/MoodAnalyzer';
 import MedicineCard from '../components/MedicineCard';
@@ -9,6 +9,10 @@ import { initSocket } from '../lib/socket';
 import DoctorSlipScanner from '../components/DoctorSlipScanner';
 import AddMedicineModal from '../components/AddMedicineModal';
 import PharmacyFinderModal from '../components/PharmacyFinderModal';
+import WoundIdentifier from '../components/WoundIdentifier';
+import VoiceEmotion from '../components/VoiceEmotion';
+import RecipeSuggester from '../components/RecipeSuggester';
+import SleepStory from '../components/SleepStory';
 import api from '../lib/api';
 
 export default function Home() {
@@ -16,6 +20,10 @@ export default function Home() {
   const [showMoodAnalyzer, setShowMoodAnalyzer] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showAddMed, setShowAddMed] = useState(false);
+  const [showWoundId, setShowWoundId] = useState(false);
+  const [showVoiceEmotion, setShowVoiceEmotion] = useState(false);
+  const [showRecipeSuggester, setShowRecipeSuggester] = useState(false);
+  const [showSleepStory, setShowSleepStory] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
   const [findingPharmacyFor, setFindingPharmacyFor] = useState<string | null>(null);
@@ -141,6 +149,36 @@ export default function Home() {
             <h2 className="text-[26px] font-bold tracking-tight mb-1">How are you feeling?</h2>
             <p className="text-warm-100 font-semibold mt-1">Tap to check your mood</p>
           </motion.button>
+          <div className="flex gap-4 mt-4">
+             <button 
+               onClick={() => setShowVoiceEmotion(true)}
+               className="flex-1 bg-white border border-purple-100 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 text-purple-600 font-bold shadow-sm active:scale-95 transition-transform"
+             >
+               <Mic className="w-5 h-5" />
+               Voice Mood
+             </button>
+             <button 
+               onClick={() => setShowMoodAnalyzer(true)}
+               className="flex-1 bg-white border border-warm-100 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 text-warm-600 font-bold shadow-sm active:scale-95 transition-transform"
+             >
+               <Smile className="w-5 h-5" />
+               Face Mood
+             </button>
+             <button 
+               onClick={() => setShowRecipeSuggester(true)}
+               className="flex-1 bg-white border border-amber-100 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 text-amber-600 font-bold shadow-sm active:scale-95 transition-transform"
+             >
+               <Coffee className="w-5 h-5" />
+               Recipes
+             </button>
+             <button 
+               onClick={() => setShowSleepStory(true)}
+               className="flex-1 bg-white border border-indigo-100 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 text-indigo-600 font-bold shadow-sm active:scale-95 transition-transform"
+             >
+               <Moon className="w-5 h-5" />
+               Story
+             </button>
+          </div>
         </section>
 
         {/* Refill Alerts */}
@@ -213,11 +251,28 @@ export default function Home() {
             className="w-full bg-white rounded-[32px] p-6 shadow-sm border-2 border-emerald-100 hover:border-emerald-200 transition-colors flex items-center gap-5 group"
           >
             <div className="w-16 h-16 bg-emerald-50 group-hover:bg-emerald-100 transition-colors text-emerald-500 rounded-3xl flex items-center justify-center flex-shrink-0">
-              <FileText className="w-8 h-8" />
+              <Camera className="w-8 h-8" />
             </div>
             <div className="text-left">
               <h3 className="text-[20px] font-bold text-gray-900 mb-1 leading-tight">Scan Prescription</h3>
-              <p className="text-gray-500 font-medium text-[15px] leading-snug">Add medicines automatically from doctor's slip</p>
+              <p className="text-gray-500 font-medium text-[15px] leading-snug">Let AI read your doctor's slip for you</p>
+            </div>
+          </motion.button>
+        </section>
+
+        {/* Wound Identifier */}
+        <section>
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setShowWoundId(true)}
+            className="w-full bg-white rounded-[32px] p-6 shadow-sm border-2 border-rose-100 hover:border-rose-200 transition-colors flex items-center gap-5 group"
+          >
+            <div className="w-16 h-16 bg-rose-50 group-hover:bg-rose-100 transition-colors text-rose-500 rounded-3xl flex items-center justify-center flex-shrink-0">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div className="text-left">
+              <h3 className="text-[20px] font-bold text-gray-900 mb-1 leading-tight">Wound Identifier</h3>
+              <p className="text-gray-500 font-medium text-[15px] leading-snug">Quick AI first-aid for scrapes or injuries</p>
             </div>
           </motion.button>
         </section>
@@ -250,6 +305,18 @@ export default function Home() {
             medicineName={findingPharmacyFor} 
             onClose={() => setFindingPharmacyFor(null)} 
           />
+        )}
+        {showWoundId && (
+          <WoundIdentifier onClose={() => setShowWoundId(false)} />
+        )}
+        {showVoiceEmotion && (
+          <VoiceEmotion onClose={() => setShowVoiceEmotion(false)} />
+        )}
+        {showRecipeSuggester && (
+          <RecipeSuggester onClose={() => setShowRecipeSuggester(false)} />
+        )}
+        {showSleepStory && (
+          <SleepStory onClose={() => setShowSleepStory(false)} />
         )}
       </AnimatePresence>
     </div>

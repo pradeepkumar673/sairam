@@ -9,6 +9,7 @@ import { ApiResponse } from "../utils/ApiResponse";
 import { AppError } from "../utils/AppError";
 import { getIO } from "../config/socket";
 import { analyzeInjuryGemini } from "../helpers/gemini.helper";
+import { analyzeInjuryHF } from "../helpers/hf.helper";
 import { imageFileToBase64, getMimeType } from "../config/gemini";
 
 // SOS
@@ -165,7 +166,14 @@ export const uploadInjuryPhoto = asyncHandler(async (req: AuthRequest, res: Resp
   const imageBase64 = imageFileToBase64(imagePath);
   const mimeType = getMimeType(req.file.originalname);
 
-  const analysis = await analyzeInjuryGemini(imageBase64, mimeType);
+  let analysis;
+  try {
+    console.log("Attempting Injury Analysis with Hugging Face...");
+    analysis = await analyzeInjuryHF(imageBase64);
+  } catch (err) {
+    console.error("HF Injury Analysis failed, falling back to Gemini:", (err as any).message);
+    analysis = await analyzeInjuryGemini(imageBase64, mimeType);
+  }
 
   const injuryRecord = await FallEvent.create({
     userId: req.user?.id,
@@ -174,7 +182,7 @@ export const uploadInjuryPhoto = asyncHandler(async (req: AuthRequest, res: Resp
     bodyPart: bodyPart || "unspecified",
     description: description || "Injury photo uploaded.",
     severity: analysis.severity,
-    status: "pending_ai_analysis",
+    status: "completed",
     aiAnalysis: analysis,
   });
 

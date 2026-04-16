@@ -1,51 +1,85 @@
+/**
+ * ai.routes.ts — Fixed, Extended & Aligned
+ * Final integrated routes matching frontend components and dual-AI controllers.
+ */
+
 import { Router } from "express";
 import { protect } from "../middleware/auth.middleware";
+import { 
+  moodPhotoUpload, 
+  doctorSlipUpload, 
+  injuryPhotoUpload 
+} from "../config/multer";
 import {
   analyzeMood,
   analyzeVoiceEmotion,
-  getMoodCompassSuggestions,
-  forecastEmotionTrend,
+  scanPrescription,
+  analyzeInjury,
+  suggestRecipe,
+  getSleepStory,
   getMoodHistory,
   saveMoodEntry,
-  suggestRecipe,
-  checkMedicineInteraction,
-  generateSleepStory,
+  getMoodCompass,
+  getEmotionTrend,
   getMemoryStories,
   addMemoryStory,
   getMemoryFollowUp,
-  chatWithCompanion,
+  checkMedicineInteraction,
+  companionChat,
   getGameScores,
   saveGameScore,
-  logVideoCall,
-  getVideoCallLogs,
   getWeatherNudge,
   getFamilyDashboard,
-  analyzeInjury,
+  logVideoCall,
+  getVideoCallLogs,
 } from "../controllers/ai.controller";
-import { moodPhotoUpload } from "../config/multer";
 
 const router = Router();
+
+// All AI routes require authentication
 router.use(protect);
 
+// ── Mood Mirror ───────────────────────────────────────────────────────────────
+// Field name: faceImage (matches MoodAnalyzer.tsx)
 router.post("/mood-mirror", moodPhotoUpload.single("faceImage"), analyzeMood);
-router.post("/voice-emotion", analyzeVoiceEmotion);
-router.post("/mood-compass", getMoodCompassSuggestions);
-router.get("/emotion-trend", forecastEmotionTrend);
+router.get("/mood-compass", getMoodCompass);
+router.get("/emotion-trend", getEmotionTrend);
 router.get("/mood-history", getMoodHistory);
 router.post("/mood-entry", saveMoodEntry);
-router.post("/suggest-recipes", suggestRecipe);
-router.post("/check-interactions", checkMedicineInteraction);
-router.post("/sleep-story", generateSleepStory);
+
+// ── Voice Emotion ─────────────────────────────────────────────────────────────
+// Body: { text: string } OR { transcribedText: string }
+router.post("/voice-emotion", analyzeVoiceEmotion);
+
+// ── Doctor Slip Scanner ───────────────────────────────────────────────────────
+// Aliased for convenience. Field name: slipImage (matches DoctorSlipScanner.tsx)
+router.post("/scan-slip", doctorSlipUpload.single("slipImage"), scanPrescription);
+router.post("/scan-prescription", doctorSlipUpload.single("prescriptionImage"), scanPrescription);
+
+// ── Wound / Injury Photo ──────────────────────────────────────────────────────
+// Field name: injuryImage (matches WoundIdentifier.tsx)
+router.post("/injury-photo", injuryPhotoUpload.single("injuryImage"), analyzeInjury);
+router.post("/analyze-injury", injuryPhotoUpload.single("injuryImage"), analyzeInjury);
+
+// ── Cognitive Assistants ──────────────────────────────────────────────────────
+router.post("/recipe-suggest", suggestRecipe);
+router.post("/sleep-story", getSleepStory);
+router.post("/medicine-interaction", checkMedicineInteraction);
+router.post("/chat", companionChat);
+
+// ── Memory Hub ───────────────────────────────────────────────────────────────
 router.get("/memory-stories", getMemoryStories);
 router.post("/memory-stories", addMemoryStory);
 router.get("/memory-stories/:storyId/follow-up", getMemoryFollowUp);
-router.post("/chat", chatWithCompanion);
+
+// ── Games & Engagement ────────────────────────────────────────────────────────
 router.get("/game-scores", getGameScores);
 router.post("/game-scores", saveGameScore);
-router.post("/video-call", logVideoCall);
-router.get("/video-calls", getVideoCallLogs);
+
+// ── Utilities & Social ────────────────────────────────────────────────────────
 router.get("/weather-nudge", getWeatherNudge);
 router.get("/dashboard", getFamilyDashboard);
-router.post("/analyze-injury", moodPhotoUpload.single("injuryImage"), analyzeInjury);
+router.post("/video-call", logVideoCall);
+router.get("/video-call-logs", getVideoCallLogs);
 
 export default router;
