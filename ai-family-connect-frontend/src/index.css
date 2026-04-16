@@ -1,6 +1,13 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-warm-50: #fff1e6;
+  --color-warm-100: #ffe1cc;
+  --color-warm-500: #f97316;
+  --color-warm-600: #ea580c;
+  --color-warm-900: #7c2d12;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
 
 @layer base {
   body {

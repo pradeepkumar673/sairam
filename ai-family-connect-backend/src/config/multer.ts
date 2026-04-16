@@ -40,15 +40,28 @@ const LIMITS = {
   avatar: 3 * MB,
 } as const;
 
-function makeFilename(prefix: string, originalName: string): string {
-  const ext = path.extname(originalName).toLowerCase() || ".jpg";
+function makeFilename(prefix: string, file: Express.Multer.File): string {
+  const mimeMap: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/heic": ".heic",
+    "image/heif": ".heif",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "audio/ogg": ".ogg",
+    "audio/wav": ".wav",
+    "audio/webm": ".webm",
+  };
+  const ext = mimeMap[file.mimetype] || ".bin";
   return `${prefix}-${uuidv4()}${ext}`;
 }
 
 function makeDiskStorage(dir: string, prefix: string): StorageEngine {
   return multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, dir),
-    filename: (_req, file, cb) => cb(null, makeFilename(prefix, file.originalname)),
+    filename: (_req, file, cb) => cb(null, makeFilename(prefix, file)),
   });
 }
 

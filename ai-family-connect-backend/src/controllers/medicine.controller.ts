@@ -117,7 +117,7 @@ export const logDose = asyncHandler(async (req: AuthRequest, res: Response) => {
     notes: notes || "",
   });
 
-  if (status === "taken" && medicine.currentStock !== null) {
+  if (status === "taken" && medicine.currentStock != null) {
     medicine.currentStock = Math.max(0, medicine.currentStock - 1);
     await medicine.save();
   }

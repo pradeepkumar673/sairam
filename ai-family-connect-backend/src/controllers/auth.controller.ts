@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { User } from "../models/User";
+import User from "../models/User";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
@@ -10,7 +10,7 @@ import { AppError } from "../utils/AppError";
 
 const generateToken = (id: string, role: string, email: string): string => {
   return jwt.sign({ id, role, email }, process.env.JWT_SECRET as string, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
+    expiresIn: (process.env.JWT_EXPIRES_IN || "7d") as any,
   });
 };
 

@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
-import { FamilyLink } from "../models/FamilyLink";
-import { User } from "../models/User";
+import FamilyLink, { LinkStatus } from "../models/FamilyLink";
+import User from "../models/User";
 import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { AppError } from "../utils/AppError";
@@ -89,7 +89,7 @@ export const respondToInvite = asyncHandler(async (req: AuthRequest, res: Respon
   if (!link) throw new AppError("Pending link request not found.", 404);
 
   if (action === "accept") {
-    link.status = "accepted";
+    link.status = LinkStatus.ACCEPTED;
     link.acceptedAt = new Date();
     await link.save();
     res.status(200).json(new ApiResponse(200, { link }, "Family link accepted."));

@@ -11,6 +11,10 @@ import MoodEntry from "../models/MoodEntry";
 import UserStory from "../models/UserStory";
 import GameScore from "../models/GameScore";
 import VideoCallLog from "../models/VideoCallLog";
+import FamilyLink from "../models/FamilyLink";
+import MedicineLog from "../models/MedicineLog";
+import SOSAlert from "../models/SOSAlert";
+import FallEvent from "../models/FallEvent";
 import { imageFileToBase64, getMimeType } from "../config/gemini";
 import {
   analyzeFacialMood,
@@ -227,7 +231,7 @@ export const getFamilyDashboard = asyncHandler(async (req: Request, res: Respons
     scheduledTime: { $gte: today },
   });
   const compliance = logs.length > 0
-    ? Math.round((logs.filter(l => l.status === "taken").length / logs.length) * 100)
+    ? Math.round((logs.filter((l: any) => l.status === "taken").length / logs.length) * 100)
     : 100;
 
   // Recent alerts

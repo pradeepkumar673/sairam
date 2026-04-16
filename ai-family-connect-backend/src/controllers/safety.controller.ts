@@ -47,7 +47,7 @@ export const triggerSOS = asyncHandler(async (req: AuthRequest, res: Response) =
       triggeredBy: { id: userId, name: user.fullName() },
       message: sosAlert.message,
       location: sosAlert.location,
-      timestamp: sosAlert.createdAt,
+      timestamp: (sosAlert as any).createdAt,
     });
   });
 
@@ -120,7 +120,7 @@ export const reportFallEvent = asyncHandler(async (req: AuthRequest, res: Respon
       severity: fallEvent.severity,
       description: fallEvent.description,
       location: fallEvent.location,
-      timestamp: fallEvent.createdAt,
+      timestamp: (fallEvent as any).createdAt,
     });
   });
 
@@ -229,7 +229,7 @@ export const reportPostureAlert = asyncHandler(async (req: AuthRequest, res: Res
         user: { id: userId, name: user?.firstName },
         type,
         message: `⚠️ No movement detected for ${user?.firstName}.`,
-        timestamp: postureAlert.createdAt,
+        timestamp: (postureAlert as any).createdAt,
       });
     });
   }

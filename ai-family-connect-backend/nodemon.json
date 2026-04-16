@@ -2,7 +2,7 @@
   "watch": ["src"],
   "ext": "ts,json",
   "ignore": ["src/uploads/*", "dist/*"],
-  "exec": "ts-node src/app.ts",
+  "exec": "ts-node server.ts",
   "env": {
     "NODE_ENV": "development"
   }
