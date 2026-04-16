@@ -1,8 +1,3 @@
-/**
- * config/db.ts
- * MongoDB connection with retry logic
- */
-
 import mongoose from "mongoose";
 
 export const connectDB = async (): Promise<void> => {
@@ -21,16 +16,14 @@ export const connectDB = async (): Promise<void> => {
     try {
       await mongoose.connect(uri, options);
       console.log(`✅ MongoDB connected: ${mongoose.connection.host}`);
-
       mongoose.connection.on("error", (err) => console.error("MongoDB error:", err));
       mongoose.connection.on("disconnected", () => console.warn("⚠️ MongoDB disconnected"));
-
       return;
     } catch (err) {
       retries -= 1;
       console.error(`❌ MongoDB connection failed. Retries left: ${retries}`);
       if (retries === 0) throw err;
-      await new Promise((r) => setTimeout(r, 3000)); // wait 3s before retry
+      await new Promise((r) => setTimeout(r, 3000));
     }
   }
 };

@@ -1,7 +1,3 @@
-/**
- * utils/ApiResponse.ts
- * Standardised success response wrapper
- */
 export class ApiResponse<T = unknown> {
   public success: boolean;
   public statusCode: number;

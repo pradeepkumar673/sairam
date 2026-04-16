@@ -9,30 +9,23 @@ import { createApp } from "./src/app";
 import { connectDB } from "./src/config/db";
 import { initSocket } from "./src/config/socket";
 
-// ── Cron jobs ─────────────────────────────────────────────────────
+// Cron jobs
 import { startMedicineReminderJob, startMissedDoseJob, startRefillReminderJob } from "./src/jobs/medicineReminder.job";
 
 const PORT = parseInt(process.env.PORT || "5000", 10);
 
 const start = async (): Promise<void> => {
-  // 1. Connect to MongoDB
   await connectDB();
 
-  // 2. Build Express app
   const app = createApp();
-
-  // 3. Wrap in HTTP server (required for Socket.io)
   const httpServer = http.createServer(app);
 
-  // 4. Attach Socket.io
   initSocket(httpServer);
 
-  // 5. Start cron jobs
   startMedicineReminderJob();
   startMissedDoseJob();
   startRefillReminderJob();
 
-  // 6. Listen
   httpServer.listen(PORT, () => {
     console.log(`\n🚀 Server running on port ${PORT} [${process.env.NODE_ENV}]`);
     console.log(`📡 REST API  → http://localhost:${PORT}/api`);
@@ -40,7 +33,6 @@ const start = async (): Promise<void> => {
     console.log(`❤️  Health   → http://localhost:${PORT}/health\n`);
   });
 
-  // ── Graceful shutdown ────────────────────────────────────────
   const shutdown = (signal: string) => {
     console.log(`\n${signal} received. Shutting down gracefully...`);
     httpServer.close(() => {

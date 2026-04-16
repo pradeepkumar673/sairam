@@ -1,7 +1,7 @@
 {
   "name": "ai-family-connect-backend",
-  "version": "1.0.0",
-  "description": "Backend for AI Powered Family Connect — a caring family safety web app",
+  "version": "2.0.0",
+  "description": "Production-ready backend for AI Powered Family Connect – 22 features for elderly care and family safety",
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon",
@@ -48,12 +48,13 @@
   "keywords": [
     "family",
     "safety",
-    "location",
     "sos",
     "ai",
     "gemini",
-    "realtime"
+    "realtime",
+    "elderly-care",
+    "health"
   ],
-  "author": "Your Name",
+  "author": "AI Family Connect Team",
   "license": "MIT"
 }

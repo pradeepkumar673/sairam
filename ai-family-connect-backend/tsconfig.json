@@ -13,18 +13,17 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
-      "@config/*":      ["src/config/*"],
-      "@models/*":      ["src/models/*"],
-      "@routes/*":      ["src/routes/*"],
+      "@config/*": ["src/config/*"],
+      "@models/*": ["src/models/*"],
+      "@routes/*": ["src/routes/*"],
       "@controllers/*": ["src/controllers/*"],
-      "@middleware/*":  ["src/middleware/*"],
-      "@utils/*":       ["src/utils/*"],
-      "@validators/*":  ["src/validators/*"],
-      "@sockets/*":     ["src/sockets/*"],
-      "@jobs/*":        ["src/jobs/*"]
+      "@middleware/*": ["src/middleware/*"],
+      "@utils/*": ["src/utils/*"],
+      "@sockets/*": ["src/sockets/*"],
+      "@jobs/*": ["src/jobs/*"],
+      "@helpers/*": ["src/helpers/*"]
     }
   },
   "include": ["src/**/*", "server.ts"],

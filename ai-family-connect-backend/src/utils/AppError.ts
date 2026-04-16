@@ -1,7 +1,3 @@
-/**
- * utils/AppError.ts
- * Custom operational error class
- */
 export class AppError extends Error {
   public statusCode: number;
   public isOperational: boolean;
