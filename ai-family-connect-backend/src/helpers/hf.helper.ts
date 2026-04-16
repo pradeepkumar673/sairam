@@ -110,49 +110,65 @@ export async function analyzeVoiceEmotionHF(
 }
 
 /**
- * Medical Prescription OCR via Hugging Face
- * Model: chinmays18/medical-prescription-ocr
- * Note: If this custom model doesn't return structured JSON, 
- * we rely on our controller's try/catch to fallback to Gemini.
+ * Medical Prescription OCR via Hugging Face Vision API (Llama 3.2 11B Vision)
+ * This acts as a powerful open-source drop-in replacement for Google Gemini
  */
 export async function scanDoctorSlipHF(imageBase64: string): Promise<DoctorSlipResult> {
-  const modelId = "chinmays18/medical-prescription-ocr";
-  
-  const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-  const binaryBuffer = Buffer.from(base64Data, "base64");
+  const modelId = "Qwen/Qwen2-VL-7B-Instruct";
+  const url = `${HF_API_URL}/${modelId}/v1/chat/completions`;
 
-  const response = await axios.post(
-    `${HF_API_URL}/${modelId}`,
-    binaryBuffer,
+  // We explicitly define a base64 Data URI for the chat formatting
+  const base64Uri = imageBase64.startsWith("data:image") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+
+  const requestBody = {
+    model: modelId,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `You are a medical document OCR and analysis AI. Extract all medical information from this doctor's prescription image.
+Return ONLY valid JSON in this exact format:
+{
+  "medicines": [
     {
-      headers: {
-        ...getHFHeaders(),
-        "Content-Type": "application/octet-stream",
-      },
-      timeout: 15000, // OCR models are heavy
+      "name": "medicine name",
+      "dosage": "e.g., 500mg",
+      "frequency": "e.g., twice daily",
+      "duration": "e.g., 7 days",
+      "instructions": "e.g., take after food"
     }
-  );
-
-  // Ideally, the HF model returns parsed entities. If not, it throws/fails validation
-  // and routes gracefully to Gemini inside the controller.
-  const data = response.data;
-  
-  if (!data || Object.keys(data).length === 0) {
-    throw new Error("Empty OCR extraction from Hugging Face");
-  }
-
-  // Try to parse out fields generically if it returns a text string or minimal JSON
-  // If it's a raw string, we throw so Gemini handles context-aware extraction
-  if (typeof data === "string" || (Array.isArray(data) && data[0]?.generated_text)) {
-    throw new Error("HF returned unstructured text. Flowing to Gemini LLM for structured extraction...");
-  }
-
-  // Attempt to map custom HF JSON to our strict interface
-  return {
-    medicines: data.medicines || [],
-    diagnosis: data.diagnosis || null,
-    warnings: data.warnings || [],
-    doctorName: data.doctorName || null,
-    date: data.date || null,
+  ],
+  "diagnosis": "condition if mentioned (or null)",
+  "doctorName": "doctor name if visible (or null)",
+  "date": "prescription date if visible (or null)",
+  "warnings": ["any warnings"]
+}`
+          },
+          {
+            type: "image_url",
+            image_url: {
+              url: imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`
+            }
+          }
+        ]
+      }
+    ],
+    max_tokens: 1000,
+    temperature: 0.2
   };
+
+  const response = await axios.post(url, requestBody, {
+    headers: getHFHeaders(),
+    timeout: 30000,
+  });
+
+  const rawText = response.data?.choices?.[0]?.message?.content;
+  if (!rawText) throw new Error("No textual response from Hugging Face Vision");
+
+  const match = rawText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  const jsonString = match ? match[0] : rawText;
+  
+  return JSON.parse(jsonString) as DoctorSlipResult;
 }
