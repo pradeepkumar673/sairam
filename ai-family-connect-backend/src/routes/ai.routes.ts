@@ -20,6 +20,7 @@ import {
   getVideoCallLogs,
   getWeatherNudge,
   getFamilyDashboard,
+  analyzeInjury,
 } from "../controllers/ai.controller";
 import { moodPhotoUpload } from "../config/multer";
 
@@ -45,5 +46,6 @@ router.post("/video-call", logVideoCall);
 router.get("/video-calls", getVideoCallLogs);
 router.get("/weather-nudge", getWeatherNudge);
 router.get("/dashboard", getFamilyDashboard);
+router.post("/analyze-injury", moodPhotoUpload.single("injuryImage"), analyzeInjury);
 
 export default router;

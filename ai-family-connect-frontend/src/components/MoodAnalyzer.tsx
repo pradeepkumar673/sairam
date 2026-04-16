@@ -34,9 +34,7 @@ export default function MoodAnalyzer({ onClose, onAnalysisComplete }: MoodAnalyz
       const formData = new FormData();
       formData.append('faceImage', file);
 
-      const response = await api.post('/ai/mood-mirror', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post('/ai/mood-mirror', formData);
 
       setResult(response.data.data);
       onAnalysisComplete?.(response.data.data);

@@ -45,7 +45,7 @@ export const initSocket = (): Socket => {
     });
   });
 
-  socket.on('medicine:low_stock', (data) => {
+  socket.on('alert:low_medicine', (data) => {
     useStore.getState().addNotification({
       type: 'warning',
       title: 'Low Medicine Stock',
@@ -61,7 +61,7 @@ export const initSocket = (): Socket => {
     });
   });
 
-  socket.on('fall:detected', (data) => {
+  socket.on('alert:fall_detected', (data) => {
     useStore.getState().addNotification({
       type: 'emergency',
       title: 'Fall Detected!',

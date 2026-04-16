@@ -1,4 +1,5 @@
 import { Response } from "express";
+import axios from "axios";
 import { AuthRequest } from "../middleware/auth.middleware";
 import Medicine from "../models/Medicine";
 import MedicineLog from "../models/MedicineLog";
@@ -7,6 +8,7 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { AppError } from "../utils/AppError";
 import { scanDoctorSlipGemini } from "../helpers/gemini.helper";
+import { scanDoctorSlipHF } from "../helpers/hf.helper";
 import { imageFileToBase64, getMimeType } from "../config/gemini";
 
 export const addMedicine = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -181,7 +183,13 @@ export const scanDoctorSlip = asyncHandler(async (req: AuthRequest, res: Respons
   const imageBase64 = imageFileToBase64(imagePath);
   const mimeType = getMimeType(req.file.originalname);
 
-  const result = await scanDoctorSlipGemini(imageBase64, mimeType);
+  let result;
+  try {
+    result = await scanDoctorSlipHF(imageBase64);
+  } catch (err: any) {
+    console.warn("HF scanDoctorSlip error, falling back to Gemini:", err.message);
+    result = await scanDoctorSlipGemini(imageBase64, mimeType);
+  }
 
   const createdMeds = [];
   for (const med of result.medicines) {
@@ -238,4 +246,68 @@ export const restockMedicine = asyncHandler(async (req: AuthRequest, res: Respon
 
   if (!medicine) throw new AppError("Medicine not found or access denied.", 404);
   res.status(200).json(new ApiResponse(200, { medicine }, `Stock updated. New stock: ${medicine.currentStock}`));
+});
+
+export const getNearestPharmacies = asyncHandler(async (req: AuthRequest, res: Response) => {
+  let { lat, lon, address } = req.body;
+
+  if (!lat || !lon) {
+    if (!address) {
+      throw new AppError("Provide either lat/lon coordinates or a manual address.", 400);
+    }
+    // Use Nominatim free geocoding
+    try {
+      const geoRes = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+        params: { q: address, format: "json", limit: 1 },
+        headers: { "User-Agent": "AIFamilyConnect/2.0" }
+      });
+      if (!geoRes.data || geoRes.data.length === 0) {
+        throw new AppError("Could not find coordinates for the provided address.", 404);
+      }
+      lat = parseFloat(geoRes.data[0].lat);
+      lon = parseFloat(geoRes.data[0].lon);
+    } catch (err: any) {
+      throw new AppError("Geocoding failed: " + err.message, 500);
+    }
+  }
+
+  // Use Overpass API for pharmacies within ~5km
+  const overpassQuery = `
+    [out:json][timeout:10];
+    node["amenity"="pharmacy"](around:5000,${lat},${lon});
+    out 15;
+  `;
+
+  try {
+    const overpassRes = await axios.post("https://overpass-api.de/api/interpreter", `data=${encodeURIComponent(overpassQuery)}`, {
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }
+    });
+
+    if (!overpassRes.data || !overpassRes.data.elements) {
+      return res.status(200).json(new ApiResponse(200, { pharmacies: [] }, "No pharmacies found in this area."));
+    }
+
+    // Mock phone generator for OSM nodes missing contact info (for demo purposes)
+    const generateMockPhone = (id: number) => {
+      const strId = String(id).slice(-4);
+      return `+1 (555) 019-${strId.padStart(4, '0')}`;
+    };
+
+    const pharmacies = overpassRes.data.elements.map((el: any) => {
+      const distanceApprox = Math.sqrt(Math.pow(el.lat - lat, 2) + Math.pow(el.lon - lon, 2)) * 111; // Approx km
+      return {
+        id: el.id,
+        name: el.tags?.name || "Local Pharmacy",
+        phone: el.tags?.phone || el.tags?.["contact:phone"] || generateMockPhone(el.id),
+        lat: el.lat,
+        lon: el.lon,
+        address: el.tags?.["addr:street"] ? `${el.tags["addr:street"]}, ${el.tags["addr:city"] || ''}` : "Address unavailable",
+        distanceKm: distanceApprox.toFixed(1)
+      };
+    }).sort((a: any, b: any) => parseFloat(a.distanceKm) - parseFloat(b.distanceKm));
+
+    res.status(200).json(new ApiResponse(200, { pharmacies, searchCenter: { lat, lon } }));
+  } catch (err: any) {
+    throw new AppError("Failed to fetch overpass pharmacy data: " + err.message, 500);
+  }
 });

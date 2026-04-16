@@ -27,7 +27,9 @@ import {
   chatWithCompanionGemini,
   getMemoryFollowUpQuestion,
   getWeatherHealthNudge,
+  analyzeInjuryGemini,
 } from "../helpers/gemini.helper";
+import { analyzeFacialMoodHF, analyzeVoiceEmotionHF } from "../helpers/hf.helper";
 
 // Mood Mirror
 export const analyzeMood = asyncHandler(async (req: Request, res: Response) => {
@@ -37,7 +39,14 @@ export const analyzeMood = asyncHandler(async (req: Request, res: Response) => {
   const imagePath = req.file.path;
   const imageBase64 = imageFileToBase64(imagePath);
   const mimeType = getMimeType(req.file.originalname);
-  const result = await analyzeFacialMood(imageBase64, (req as any).user.firstName, (req as any).user.role);
+  
+  let result;
+  try {
+    result = await analyzeFacialMoodHF(imageBase64, (req as any).user.firstName, (req as any).user.role);
+  } catch (err: any) {
+    console.warn("HF analyzeFacialMood error, falling back to Gemini:", err.message);
+    result = await analyzeFacialMood(imageBase64, (req as any).user.firstName, (req as any).user.role);
+  }
 
   await MoodEntry.create({
     userId,
@@ -56,7 +65,13 @@ export const analyzeVoiceEmotion = asyncHandler(async (req: Request, res: Respon
   const { transcribedText } = req.body;
   if (!transcribedText) throw new AppError("Transcribed text is required.", 400);
 
-  const result = await analyzeVoiceEmotionGemini(transcribedText, (req as any).user.firstName, (req as any).user.role);
+  let result;
+  try {
+    result = await analyzeVoiceEmotionHF(transcribedText, (req as any).user.firstName, (req as any).user.role);
+  } catch (err: any) {
+    console.warn("HF analyzeVoiceEmotion error, falling back to Gemini:", err.message);
+    result = await analyzeVoiceEmotionGemini(transcribedText, (req as any).user.firstName, (req as any).user.role);
+  }
 
   await MoodEntry.create({
     userId,
@@ -250,4 +265,15 @@ export const getFamilyDashboard = asyncHandler(async (req: Request, res: Respons
     complianceRate: compliance,
     recentAlerts: { sos: recentSOS, falls: recentFalls },
   }));
+});
+
+export const analyzeInjury = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.file) throw new AppError("Photo is required for injury analysis.", 400);
+
+  const imagePath = req.file.path;
+  const imageBase64 = imageFileToBase64(imagePath);
+  const mimeType = getMimeType(req.file.originalname);
+  
+  const result = await analyzeInjuryGemini(imageBase64, mimeType);
+  res.status(200).json(new ApiResponse(200, result, "Injury analyzed."));
 });

@@ -16,6 +16,7 @@ import familyRoutes from "./routes/family.routes";
 import medicineRoutes from "./routes/medicine.routes";
 import safetyRoutes from "./routes/safety.routes";
 import aiRoutes from "./routes/ai.routes";
+import chatRoutes from "./routes/chat.routes";
 
 export const createApp = (): Application => {
   const app = express();
@@ -51,6 +52,7 @@ export const createApp = (): Application => {
   app.use("/api/medicine", medicineRoutes);
   app.use("/api/safety", safetyRoutes);
   app.use("/api/ai", aiRoutes);
+  app.use("/api/chat", chatRoutes);
 
   // 404 Handler
   app.use((req: Request, _res: Response, next: NextFunction) => {

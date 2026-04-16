@@ -13,7 +13,7 @@ export interface IChatMessage extends Document {
 
 const ChatMessageSchema = new Schema<IChatMessage>(
   {
-    familyId: { type: Schema.Types.ObjectId, ref: "Family", required: true },
+    familyId: { type: Schema.Types.ObjectId, required: true },
     senderId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     content: { type: String, required: true },
     messageType: { type: String, enum: ["text", "image", "voice"], default: "text" },

@@ -11,6 +11,7 @@ import {
   scanDoctorSlip,
   getRefillAlerts,
   restockMedicine,
+  getNearestPharmacies,
 } from "../controllers/medicine.controller";
 import { protect } from "../middleware/auth.middleware";
 import { doctorSlipUpload } from "../config/multer";
@@ -19,6 +20,7 @@ const router = Router();
 router.use(protect);
 
 router.post("/", addMedicine);
+router.post("/pharmacies", getNearestPharmacies);
 router.get("/", getMedicines);
 router.get("/compliance/summary", getComplianceSummary);
 router.get("/refill-alerts", getRefillAlerts);

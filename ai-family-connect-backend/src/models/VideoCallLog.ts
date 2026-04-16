@@ -13,7 +13,7 @@ export interface IVideoCallLog extends Document {
 const VideoCallLogSchema = new Schema<IVideoCallLog>(
   {
     initiatedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    familyId: { type: Schema.Types.ObjectId, ref: "Family", required: true },
+    familyId: { type: Schema.Types.ObjectId, required: true },
     participants: [{ type: Schema.Types.ObjectId, ref: "User" }],
     duration: { type: Number },
     callType: { type: String, enum: ["video", "audio"], default: "video" },

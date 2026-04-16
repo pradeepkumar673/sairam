@@ -4,14 +4,21 @@ import { Smile, Bell, FileText, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MoodAnalyzer from '../components/MoodAnalyzer';
 import MedicineCard from '../components/MedicineCard';
-import api from '../lib/api';
 import { initSocket } from '../lib/socket';
+
+import DoctorSlipScanner from '../components/DoctorSlipScanner';
+import AddMedicineModal from '../components/AddMedicineModal';
+import PharmacyFinderModal from '../components/PharmacyFinderModal';
+import api from '../lib/api';
 
 export default function Home() {
   const { user, medicines, setMedicines, notifications } = useStore();
   const [showMoodAnalyzer, setShowMoodAnalyzer] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [showAddMed, setShowAddMed] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [findingPharmacyFor, setFindingPharmacyFor] = useState<string | null>(null);
   const [refillAlerts, setRefillAlerts] = useState<any[]>([]);
 
   useEffect(() => {
@@ -51,27 +58,9 @@ export default function Home() {
     }
   };
 
-  const handleScanPrescription = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      const formData = new FormData();
-      formData.append('slipImage', file);
-      try {
-        await api.post('/medicine/scan-slip', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        fetchMedicines();
-      } catch (err) {
-        console.error('Scan failed', err);
-      }
-    };
-    input.click();
+  const handleScanPrescription = () => {
+    setShowScanner(true);
   };
-
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -164,11 +153,19 @@ export default function Home() {
                 </div>
                 <h3 className="font-bold text-amber-900 text-lg">Low Stock Alert</h3>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3 mt-2">
               {refillAlerts.map((alert) => (
-                <div key={alert._id} className="bg-white rounded-2xl p-3 px-4 shadow-sm text-amber-800 flex justify-between items-center">
-                  <span className="font-semibold">{alert.name}</span>
-                  <span className="text-sm font-bold bg-amber-100 px-3 py-1 rounded-full">{alert.currentStock} left</span>
+                <div key={alert._id} className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100/50 flex flex-col gap-3 text-amber-900">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-lg">{alert.name}</span>
+                    <span className="text-sm font-bold bg-amber-100 px-3 py-1 rounded-full">{alert.currentStock} left</span>
+                  </div>
+                  <button 
+                    onClick={() => setFindingPharmacyFor(alert.name)} 
+                    className="w-full bg-amber-50 hover:bg-amber-100 border border-amber-200/50 text-amber-700 py-3 rounded-[14px] text-[15px] font-bold transition-colors shadow-sm active:scale-95"
+                  >
+                    📍 Find Local Pharmacy
+                  </button>
                 </div>
               ))}
               </div>
@@ -178,7 +175,15 @@ export default function Home() {
 
         {/* Medicines */}
         <section>
-          <h3 className="text-2xl font-bold text-gray-900 mb-5 px-1">Today's Medicines</h3>
+          <div className="flex justify-between items-center mb-5 px-1">
+             <h3 className="text-2xl font-bold text-gray-900">Today's Medicines</h3>
+             <button
+               onClick={() => setShowAddMed(true)}
+               className="w-10 h-10 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-xl flex items-center justify-center transition-colors shadow-sm"
+             >
+               <span className="text-2xl leading-none font-bold mb-1">+</span>
+             </button>
+          </div>
           {loading ? (
             <div className="flex flex-col items-center justify-center py-10 space-y-3">
               <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-warm-200 border-t-warm-500 rounded-full" />
@@ -221,6 +226,30 @@ export default function Home() {
       <AnimatePresence>
         {showMoodAnalyzer && (
           <MoodAnalyzer onClose={() => setShowMoodAnalyzer(false)} />
+        )}
+        {showScanner && (
+          <DoctorSlipScanner 
+            onClose={() => setShowScanner(false)} 
+            onSuccess={() => {
+              setShowScanner(false);
+              fetchMedicines();
+            }} 
+          />
+        )}
+        {showAddMed && (
+          <AddMedicineModal 
+            onClose={() => setShowAddMed(false)} 
+            onSuccess={() => {
+              setShowAddMed(false);
+              fetchMedicines();
+            }} 
+          />
+        )}
+        {findingPharmacyFor && (
+          <PharmacyFinderModal 
+            medicineName={findingPharmacyFor} 
+            onClose={() => setFindingPharmacyFor(null)} 
+          />
         )}
       </AnimatePresence>
     </div>

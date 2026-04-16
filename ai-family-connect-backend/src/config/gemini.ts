@@ -9,7 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 export const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
 
 export const GEMINI_DEFAULT_CONFIG = {
   temperature: 0.7,
@@ -99,11 +99,8 @@ export function getMimeType(filename: string): GeminiImageMimeType {
 }
 
 export function stripGeminiMarkdown(raw: string): string {
-  return raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  const match = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  return match ? match[0] : raw.trim();
 }
 
 export function parseGeminiJSON<T>(raw: string): T {
