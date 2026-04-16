@@ -1,101 +1,228 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store';
-import { Smile, CheckCircle2, FileText, Bell } from 'lucide-react';
+import { Smile, Bell, FileText, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MoodAnalyzer from '../components/MoodAnalyzer';
+import MedicineCard from '../components/MedicineCard';
+import api from '../lib/api';
+import { initSocket } from '../lib/socket';
 
 export default function Home() {
-  const { user } = useStore();
+  const { user, medicines, setMedicines, notifications } = useStore();
   const [showMoodAnalyzer, setShowMoodAnalyzer] = useState(false);
-  const [medicines, setMedicines] = useState([
-    { id: 1, name: 'Amlodipine (Blood Pressure)', time: '09:00 AM', taken: false },
-    { id: 2, name: 'Vitamin D3', time: '09:00 AM', taken: false }
-  ]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refillAlerts, setRefillAlerts] = useState<any[]>([]);
 
-  const toggleMedicine = (id: number) => {
-    setMedicines(meds => meds.map(m => m.id === id ? { ...m, taken: !m.taken } : m));
+  useEffect(() => {
+    // Request notification permission
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Initialize socket
+    try {
+      initSocket();
+    } catch (err) {
+      console.warn('Socket init failed');
+    }
+
+    fetchMedicines();
+    fetchRefillAlerts();
+  }, []);
+
+  const fetchMedicines = async () => {
+    try {
+      const res = await api.get('/medicine');
+      setMedicines(res.data.data.medicines || []);
+    } catch (err) {
+      console.error('Failed to fetch medicines', err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const fetchRefillAlerts = async () => {
+    try {
+      const res = await api.get('/medicine/refill-alerts');
+      setRefillAlerts(res.data.data.refillAlerts || []);
+    } catch (err) {
+      console.error('Failed to fetch refill alerts', err);
+    }
+  };
+
+  const handleScanPrescription = async () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('slipImage', file);
+      try {
+        await api.post('/medicine/scan-slip', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        fetchMedicines();
+      } catch (err) {
+        console.error('Scan failed', err);
+      }
+    };
+    input.click();
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <div className="min-h-screen bg-warm-50 pb-8">
       {/* Header */}
-      <div className="bg-white rounded-b-[40px] shadow-sm px-6 pt-12 pb-8 border-b border-warm-100">
+      <div className="bg-white rounded-b-[40px] shadow-sm px-6 pt-12 pb-8 border-b border-warm-100 relative z-20">
         <div className="flex justify-between items-center mb-6">
-          <div className="w-12 h-12 bg-warm-100 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-            <span className="text-xl font-bold text-warm-600">
-              {user?.name?.charAt(0) || 'U'}
-            </span>
+          <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center border-[3px] border-emerald-50 shadow-sm overflow-hidden">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-2xl font-bold text-emerald-600">{user?.name?.charAt(0).toUpperCase() || 'U'}</span>
+            )}
           </div>
-          <button className="w-12 h-12 bg-white border border-warm-100 rounded-full flex items-center justify-center shadow-sm relative">
-            <Bell className="w-6 h-6 text-gray-600" />
-            <span className="absolute top-3 right-3 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative w-14 h-14 bg-white border-2 border-warm-100 hover:bg-warm-50 transition-colors rounded-full flex items-center justify-center shadow-sm"
+          >
+            <Bell className="w-6 h-6 text-gray-700" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-6 h-6 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center border-2 border-white">
+                {unreadCount}
+              </span>
+            )}
           </button>
         </div>
-        <h1 className="text-3xl font-bold text-gray-900 leading-tight">
-          Good morning,<br/>
-          <span className="text-warm-500">{user?.name || 'Dear'} ❤️</span>
+        <h1 className="text-[32px] font-bold text-gray-900 leading-tight tracking-tight">
+          Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'},<br />
+          <span className="text-warm-500">{user?.name?.split(' ')[0] || 'Dear'} ❤️</span>
         </h1>
       </div>
 
+      {/* Notifications panel */}
+      <AnimatePresence>
+        {showNotifications && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, y: -20 }}
+            animate={{ opacity: 1, height: 'auto', y: 0 }}
+            exit={{ opacity: 0, height: 0, y: -20 }}
+            className="mx-6 mt-4 bg-white rounded-3xl shadow-xl border border-warm-100 overflow-hidden relative z-10"
+          >
+            <div className="p-5 border-b border-warm-100 bg-warm-50/50 flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 text-lg">Notifications</h3>
+            </div>
+            <div className="max-h-72 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="p-8 text-center flex flex-col items-center justify-center text-gray-400">
+                  <Bell className="w-10 h-10 mb-3 opacity-20" />
+                  <p className="font-medium">All caught up!</p>
+                </div>
+              ) : (
+                notifications.map((n) => (
+                  <div key={n.id} className={`p-5 border-b border-gray-50 ${n.read ? 'opacity-50' : 'bg-white'}`}>
+                    <p className="font-bold text-gray-900">{n.title}</p>
+                    <p className="text-sm text-gray-600 mt-1">{n.message}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="px-6 py-8 space-y-8">
-        
         {/* Mood Section */}
         <section>
           <motion.button
-            whileTap={{ scale: 0.98 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setShowMoodAnalyzer(true)}
-            className="w-full bg-gradient-to-br from-warm-500 to-warm-600 text-white rounded-[32px] p-8 shadow-xl shadow-warm-500/20 relative overflow-hidden flex flex-col items-center justify-center min-h-[160px]"
+            className="w-full bg-gradient-to-br from-warm-400 via-warm-500 to-warm-600 text-white rounded-[32px] p-8 shadow-xl shadow-warm-500/30 relative overflow-hidden flex flex-col items-center justify-center min-h-[180px]"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-xl -ml-6 -mb-6"></div>
-            
-            <Smile className="w-12 h-12 mb-3 text-white/90" strokeWidth={2.5}/>
-            <h2 className="text-2xl font-bold tracking-tight">Check My Mood Now</h2>
-            <p className="text-warm-100 mt-1 font-medium">Takes only 5 seconds</p>
+            <motion.div 
+               animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
+               transition={{ repeat: Infinity, duration: 4 }}
+               className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full blur-[40px] -mr-10 -mt-10 pointer-events-none" 
+            />
+            <Smile className="w-14 h-14 mb-3 text-white shadow-sm" strokeWidth={2.5} />
+            <h2 className="text-[26px] font-bold tracking-tight mb-1">How are you feeling?</h2>
+            <p className="text-warm-100 font-semibold mt-1">Tap to check your mood</p>
           </motion.button>
         </section>
 
+        {/* Refill Alerts */}
+        {refillAlerts.length > 0 && (
+          <section>
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-3xl p-5 shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                </div>
+                <h3 className="font-bold text-amber-900 text-lg">Low Stock Alert</h3>
+              </div>
+              <div className="space-y-2">
+              {refillAlerts.map((alert) => (
+                <div key={alert._id} className="bg-white rounded-2xl p-3 px-4 shadow-sm text-amber-800 flex justify-between items-center">
+                  <span className="font-semibold">{alert.name}</span>
+                  <span className="text-sm font-bold bg-amber-100 px-3 py-1 rounded-full">{alert.currentStock} left</span>
+                </div>
+              ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Medicines */}
         <section>
-          <h3 className="text-xl font-bold text-gray-900 mb-4 px-2">Today's Medicines</h3>
-          <div className="space-y-4">
-            {medicines.map((med) => (
-              <div key={med.id} className={`bg-white rounded-3xl p-5 flex items-center justify-between border ${med.taken ? 'border-emerald-200 bg-emerald-50/30' : 'border-warm-100 shadow-sm'}`}>
-                <div>
-                  <p className={`text-lg font-bold ${med.taken ? 'text-gray-500 line-through' : 'text-gray-900'}`}>{med.name}</p>
-                  <p className="text-gray-500 font-medium">{med.time}</p>
-                </div>
-                <button 
-                  onClick={() => toggleMedicine(med.id)}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${med.taken ? 'bg-emerald-100 text-emerald-600' : 'bg-warm-100 text-warm-600'}`}
-                >
-                  <CheckCircle2 className="w-7 h-7" strokeWidth={med.taken ? 3 : 2} />
-                </button>
+          <h3 className="text-2xl font-bold text-gray-900 mb-5 px-1">Today's Medicines</h3>
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-10 space-y-3">
+              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} className="w-8 h-8 border-4 border-warm-200 border-t-warm-500 rounded-full" />
+              <div className="text-gray-500 font-medium">Fetching your schedule...</div>
+            </div>
+          ) : medicines.length === 0 ? (
+            <div className="bg-white rounded-[32px] p-8 text-center border border-gray-100 shadow-sm">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="w-8 h-8 text-gray-300" />
               </div>
-            ))}
-          </div>
+              <p className="text-gray-500 font-medium text-lg">No medicines scheduled for today.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {medicines.map((med) => (
+                <MedicineCard key={med._id} medicine={med} onUpdate={fetchMedicines} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Prescription Scanner */}
         <section>
-          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-warm-100 flex items-center gap-5">
-            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center flex-shrink-0">
+          <motion.button
+            whileTap={{ scale: 0.98 }}
+            onClick={handleScanPrescription}
+            className="w-full bg-white rounded-[32px] p-6 shadow-sm border-2 border-emerald-100 hover:border-emerald-200 transition-colors flex items-center gap-5 group"
+          >
+            <div className="w-16 h-16 bg-emerald-50 group-hover:bg-emerald-100 transition-colors text-emerald-500 rounded-3xl flex items-center justify-center flex-shrink-0">
               <FileText className="w-8 h-8" />
             </div>
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-1">Doctor Prescription</h3>
-              <p className="text-gray-500 font-medium text-sm">Scan paper slip to add medicines automatically</p>
+            <div className="text-left">
+              <h3 className="text-[20px] font-bold text-gray-900 mb-1 leading-tight">Scan Prescription</h3>
+              <p className="text-gray-500 font-medium text-[15px] leading-snug">Add medicines automatically from doctor's slip</p>
             </div>
-          </div>
+          </motion.button>
         </section>
-
       </div>
 
-      {/* Modals */}
       <AnimatePresence>
-        {showMoodAnalyzer && <MoodAnalyzer onClose={() => setShowMoodAnalyzer(false)} />}
+        {showMoodAnalyzer && (
+          <MoodAnalyzer onClose={() => setShowMoodAnalyzer(false)} />
+        )}
       </AnimatePresence>
-
     </div>
   );
 }

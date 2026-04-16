@@ -1,154 +1,213 @@
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
-import { X, Phone, MapPin, Smile } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Camera, RefreshCw } from 'lucide-react';
+import api from '../lib/api';
 
 interface MoodAnalyzerProps {
   onClose: () => void;
+  onAnalysisComplete?: (result: any) => void;
 }
 
-export default function MoodAnalyzer({ onClose }: MoodAnalyzerProps) {
+export default function MoodAnalyzer({ onClose, onAnalysisComplete }: MoodAnalyzerProps) {
+  const webcamRef = useRef<Webcam>(null);
+  const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  const startAnalysis = () => {
+  const capture = useCallback(() => {
+    const imageSrc = webcamRef.current?.getScreenshot();
+    if (imageSrc) {
+      setCapturedImage(imageSrc);
+    }
+  }, [webcamRef]);
+
+  const analyzeMood = async (imageBase64: string) => {
     setAnalyzing(true);
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 2;
-      setProgress(current);
-      if (current >= 100) {
-        clearInterval(interval);
-        setAnalyzing(false);
-        setResult({
-          score: 85,
-          title: "You look calm and peaceful today",
-          emoji: "😌",
-          message: "It’s wonderful to see you relaxed. Maintaining this peace is great for your heart health!"
-        });
-      }
-    }, 100);
+    setError(null);
+    try {
+      const res = await fetch(imageBase64);
+      const blob = await res.blob();
+      const file = new File([blob], 'mood.jpg', { type: 'image/jpeg' });
+
+      const formData = new FormData();
+      formData.append('faceImage', file);
+
+      const response = await api.post('/ai/mood-mirror', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      setResult(response.data.data);
+      onAnalysisComplete?.(response.data.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Analysis failed. Please try again.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const retake = () => {
+    setCapturedImage(null);
+    setResult(null);
+    setError(null);
   };
 
   useEffect(() => {
-    // Auto start analysis after short delay
-    const t = setTimeout(startAnalysis, 1500);
-    return () => clearTimeout(t);
-  }, []);
+    if (capturedImage && !result && !analyzing) {
+      analyzeMood(capturedImage);
+    }
+  }, [capturedImage]);
+
+  // Determine color for the progress bar based on confidence score
+  const getGradientForScore = (score: number) => {
+    if (score > 75) return 'from-emerald-400 to-emerald-500';
+    if (score > 45) return 'from-amber-400 to-amber-500';
+    return 'from-rose-400 to-rose-500';
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="w-full max-w-md bg-white rounded-[32px] overflow-hidden shadow-2xl relative"
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
       >
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 w-12 h-12 bg-black/20 backdrop-blur-md rounded-full flex items-center justify-center text-white"
+        <motion.div
+          initial={{ scale: 0.9, y: 20, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.9, y: 20, opacity: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="w-full max-w-md bg-white rounded-[36px] overflow-hidden shadow-2xl relative"
         >
-          <X className="w-6 h-6" />
-        </button>
+          <div className="p-5 flex justify-between items-center border-b border-warm-100/50 bg-white/80 backdrop-blur-sm z-10 relative">
+            <h3 className="text-[22px] font-bold text-gray-900 tracking-tight">Mood Mirror</h3>
+            <button onClick={onClose} className="w-12 h-12 rounded-full bg-warm-50 flex items-center justify-center hover:bg-warm-100 transition-colors">
+              <X className="w-6 h-6 text-gray-700" />
+            </button>
+          </div>
 
-        {!result ? (
-          <div className="relative h-[60vh] bg-gray-900 rounded-[32px] m-2 overflow-hidden">
-            <Webcam
-              audio={false}
-              className="absolute inset-0 w-full h-full object-cover"
-              mirrored
-            />
-            {analyzing && (
-              <div className="absolute inset-0 z-10">
-                {/* Simulated Face Mesh overlay */}
-                <svg className="absolute inset-0 w-full h-full opacity-50" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <motion.path 
-                    d="M 30,40 Q 50,30 70,40 Q 60,60 50,70 Q 40,60 30,40 Z" 
-                    stroke="#10b981" 
-                    strokeWidth="0.5" 
-                    fill="none" 
-                    initial={{ pathLength: 0 }} 
-                    animate={{ pathLength: 1 }} 
-                    transition={{ duration: 2, repeat: Infinity }} 
+          <div className="p-5">
+            {!capturedImage ? (
+              <div className="relative rounded-[32px] overflow-hidden bg-black shadow-inner">
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{ facingMode: 'user' }}
+                  className="w-full h-[400px] object-cover scale-[1.02]"
+                />
+                
+                {/* Face Scanning Overlay Animation */}
+                <div className="absolute inset-0 border-[6px] border-black/20 rounded-[32px] pointer-events-none" />
+                <motion.div 
+                  initial={{ top: '10%', opacity: 0.3 }}
+                  animate={{ top: '90%', opacity: [0.3, 0.6, 0.3] }}
+                  transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+                  className="absolute left-[10%] right-[10%] h-[2px] bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] pointer-events-none"
+                />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
+                   <div className="w-48 h-56 border-2 border-dashed border-yellow-400 rounded-[40px] shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
+                </div>
+
+                <motion.button
+                  whileTap={{ scale: 0.9 }}
+                  onClick={capture}
+                  className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-2xl border-[6px] border-warm-500 hover:border-warm-400 transition-colors"
+                >
+                  <Camera className="w-8 h-8 text-warm-600" />
+                </motion.button>
+              </div>
+            ) : analyzing ? (
+              <div className="flex flex-col items-center justify-center py-16 h-[400px]">
+                <div className="relative">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }}
+                    className="w-20 h-20 border-4 border-warm-100 border-t-warm-500 border-r-warm-500 rounded-full mb-6"
                   />
-                  {/* Dots */}
-                  {[30, 70, 50].map((cx, i) => (
-                    <circle key={i} cx={cx} cy={i===2 ? 70 : 40} r="2" fill="#facc15" />
-                  ))}
-                </svg>
-
-                <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center">
-                  <div className="bg-black/40 backdrop-blur-md px-6 py-3 rounded-full text-white font-medium mb-4">
-                    Analyzing your expression...
-                  </div>
-                  <div className="w-2/3 h-2 bg-white/20 rounded-full overflow-hidden">
-                    <motion.div 
-                      className="h-full bg-emerald-400"
-                      style={{ width: `${progress}%` }}
-                    />
+                  <div className="absolute inset-0 flex items-center justify-center pb-6">
+                    <Smile className="w-8 h-8 text-warm-500" />
                   </div>
                 </div>
+                <p className="text-[20px] font-bold text-gray-800">Reading your expression...</p>
+                <p className="text-gray-500 font-medium mt-2">Just a moment please</p>
               </div>
+            ) : result ? (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 pt-2 pb-2">
+                <div className="text-center space-y-2">
+                  <motion.div 
+                    initial={{ scale: 0, rotate: -20 }} 
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', bounce: 0.5 }}
+                    className="text-[80px] leading-none mb-4 inline-block drop-shadow-md"
+                  >
+                    {result.emotion === 'happy' ? '😊' : result.emotion === 'sad' ? '😔' : result.emotion === 'anxious' ? '😟' : '😌'}
+                  </motion.div>
+                  <h4 className="text-[28px] font-bold text-gray-900 capitalize tracking-tight">{result.emotion}</h4>
+                  <p className="text-gray-600 font-medium text-[16px] px-4 leading-relaxed">{result.suggestion}</p>
+                </div>
+
+                <div className="bg-gradient-to-b from-gray-50 to-white rounded-[24px] p-6 shadow-sm border border-gray-100">
+                  <div className="flex justify-between text-[13px] font-bold text-gray-400 mb-3 uppercase tracking-wider">
+                    <span>Low</span>
+                    <span className="text-gray-900 tracking-normal capitalize">Confidence Score</span>
+                    <span>High</span>
+                  </div>
+                  <div className="h-5 bg-gray-200 rounded-full overflow-hidden shadow-inner p-1">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${result.confidence}%` }}
+                      transition={{ duration: 1.2, ease: "easeOut", delay: 0.3 }}
+                      className={`h-full rounded-full bg-gradient-to-r ${getGradientForScore(result.confidence)} relative overflow-hidden`}
+                    >
+                      <div className="absolute inset-0 bg-white/20 w-full h-full transform -skew-x-12 -translate-x-full animate-[shimmer_2s_infinite]" />
+                    </motion.div>
+                  </div>
+                  <p className="text-center mt-3 font-bold text-gray-900 text-[20px]">
+                    {result.confidence}<span className="text-gray-400 text-sm">%</span>
+                  </p>
+                </div>
+
+                {result.alertFamily && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} delay={0.5}
+                    className="bg-amber-50 border-2 border-amber-200 rounded-[24px] p-5 text-amber-900 shadow-sm"
+                  >
+                    <p className="font-bold flex items-center justify-center gap-2">
+                       <span className="text-xl">❤️</span> We've subtly notified your family.
+                    </p>
+                  </motion.div>
+                )}
+
+                <div className="flex gap-4 pt-2">
+                  <button
+                    onClick={retake}
+                    className="flex-1 py-4 bg-gray-100 text-gray-700 font-bold text-[18px] rounded-[24px] flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
+                  >
+                    <RefreshCw className="w-5 h-5" />
+                    Retake
+                  </button>
+                  <button
+                    onClick={onClose}
+                    className="flex-1 py-4 bg-warm-500 text-white font-bold text-[18px] rounded-[24px] hover:bg-warm-600 transition-colors shadow-lg shadow-warm-500/20"
+                  >
+                    Done
+                  </button>
+                </div>
+              </motion.div>
+            ) : null}
+
+            {error && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-6 p-5 bg-rose-50 border-2 border-rose-100 text-rose-700 rounded-[24px] flex flex-col items-center text-center">
+                <span className="font-bold mb-2">{error}</span>
+                <button onClick={retake} className="font-bold underline text-rose-900 py-2">Try Again</button>
+              </motion.div>
             )}
           </div>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="p-6 md:p-8 flex flex-col items-center text-center"
-          >
-            <motion.div 
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", bounce: 0.5 }}
-              className="text-8xl mb-4"
-            >
-              {result.emoji}
-            </motion.div>
-            
-            <h2 className="text-2xl font-bold text-gray-900 mb-2 leading-tight">
-              {result.title}
-            </h2>
-            
-            <div className="w-full my-6 bg-warm-50 rounded-3xl p-5 border border-warm-100">
-              <div className="flex justify-between text-sm font-semibold text-gray-500 mb-2">
-                <span>Stressed</span>
-                <span className="text-emerald-600">Peaceful</span>
-              </div>
-              <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${result.score}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
-                  className="h-full bg-gradient-to-r from-orange-400 via-yellow-400 to-emerald-500"
-                />
-              </div>
-            </div>
-
-            <p className="text-lg text-gray-600 mb-8 px-2">
-              {result.message}
-            </p>
-
-            <div className="w-full space-y-3">
-              <button 
-                onClick={() => window.location.href="tel:1234567890"}
-                className="w-full py-4 bg-warm-500 text-white text-lg font-bold rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-warm-500/30 active:scale-[0.98]"
-              >
-                <Phone className="w-6 h-6" />
-                Call Ramesh (Son)
-              </button>
-              <button 
-                onClick={() => onClose()}
-                className="w-full py-4 bg-white border-2 border-warm-100 text-warm-900 text-lg font-bold rounded-2xl flex items-center justify-center gap-3 active:scale-[0.98]"
-              >
-                <MapPin className="w-6 h-6" />
-                Visit Nearby Park
-              </button>
-            </div>
-          </motion.div>
-        )}
+        </motion.div>
       </motion.div>
-    </div>
+    </AnimatePresence>
   );
 }

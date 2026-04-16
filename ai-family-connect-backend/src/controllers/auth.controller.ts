@@ -36,7 +36,7 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
 
   const nameParts = name.split(" ");
   const firstName = nameParts[0];
-  const lastName = nameParts.slice(1).join(" ") || "";
+  const lastName = nameParts.slice(1).join(" ") || "Family";
 
   const newUser = await User.create({
     firstName,
