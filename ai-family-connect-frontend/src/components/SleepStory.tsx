@@ -72,7 +72,7 @@ export default function SleepStory({ onClose }: SleepStoryProps) {
       return;
     }
 
-    speechUtterance = new SpeechSynthesisUtterance(story.story);
+    speechUtterance = new SpeechSynthesisUtterance(story?.story || "Once upon a time...");
     speechUtterance.rate = 0.82;
     speechUtterance.pitch = 0.9;
     speechUtterance.lang = 'en-IN';
@@ -205,9 +205,9 @@ export default function SleepStory({ onClose }: SleepStoryProps) {
                 {/* Title */}
                 <div className="text-center py-2">
                   <div className="text-4xl mb-2">🌙</div>
-                  <h4 className="text-2xl font-bold text-indigo-900">{story.title}</h4>
+                  <h4 className="text-2xl font-bold text-indigo-900">{story?.title || "Peaceful Night Story"}</h4>
                   <p className="text-xs text-indigo-400 mt-1">
-                    {THEMES.find(t => t.id === story.theme)?.emoji} {story.theme} · {story.duration}
+                    {THEMES.find(t => t.id === story?.theme)?.emoji || "✨"} {story?.theme || "Calm"} · {story?.duration || "Ready"}
                   </p>
                 </div>
 
@@ -234,9 +234,9 @@ export default function SleepStory({ onClose }: SleepStoryProps) {
                 </div>
 
                 {/* Story text */}
-                <div className="bg-indigo-50 rounded-3xl p-5 max-h-72 overflow-y-auto">
-                  <p className="text-indigo-900 leading-relaxed text-[15px] whitespace-pre-wrap font-serif">
-                    {story.story}
+                <div className="bg-indigo-50 rounded-3xl p-5 max-h-72 overflow-y-auto font-serif shadow-inner border border-indigo-100/50">
+                  <p className="text-indigo-900 leading-relaxed text-[17px] whitespace-pre-wrap italic opacity-90 drop-shadow-sm transition-all duration-700">
+                    "{story?.story || "Your calming bedtime story is preparing..."}"
                   </p>
                 </div>
 

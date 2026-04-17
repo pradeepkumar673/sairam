@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot } from 'lucide-react';
+import { Send, Bot, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../lib/api';
 import { useStore } from '../store';
@@ -9,6 +9,11 @@ interface Message {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
+  action?: {
+     type: 'call';
+     label: string;
+     phone: string;
+  };
 }
 
 export default function Chatbot() {
@@ -44,11 +49,25 @@ export default function Chatbot() {
         conversationHistory: messages.map(m => ({ role: m.sender === 'user' ? 'user' : 'assistant', content: m.text })),
       });
       
+      const reply = res.data.data.reply || "I'm here for you.";
+      
+      // Auto-detect calling intent for demo
+      let action: any = undefined;
+      const lowerInput = input.toLowerCase();
+      if (lowerInput.includes('son') || lowerInput.includes('miss') || lowerInput.includes('call')) {
+          action = {
+              type: 'call',
+              label: 'Call Son',
+              phone: '+1 (555) 012-7890' // Realistic demo number
+          };
+      }
+
       const botMsg: Message = {
         id: (Date.now() + 1).toString(),
-        text: res.data.data.reply || "I'm here for you.",
+        text: reply,
         sender: 'bot',
         timestamp: new Date(),
+        action
       };
       setMessages(prev => [...prev, botMsg]);
     } catch (err) {
@@ -102,6 +121,18 @@ export default function Chatbot() {
                 : 'bg-white border border-warm-100/50 text-gray-900 rounded-[24px] rounded-bl-[8px]'
             }`}>
               <p className="text-[16px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+              
+              {msg.action?.type === 'call' && (
+                <motion.a
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  href={`tel:${msg.action.phone}`}
+                  className="mt-4 flex items-center justify-center gap-2 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-500/30 transition-all active:scale-95"
+                >
+                  <Phone className="w-5 h-5 fill-current" />
+                  {msg.action.label}
+                </motion.a>
+              )}
             </div>
           </motion.div>
         ))}

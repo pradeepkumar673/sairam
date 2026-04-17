@@ -6,20 +6,29 @@ import api from '../lib/api';
 interface Props {
   onClose: () => void;
   onSuccess: () => void;
+  initialData?: {
+    name?: string;
+    dosage?: string;
+    unit?: string;
+    frequency?: string;
+  };
 }
 
-export default function AddMedicineModal({ onClose, onSuccess }: Props) {
+export default function AddMedicineModal({ onClose, onSuccess, initialData }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
-    name: '',
-    dosage: '',
-    unit: 'mg',
-    frequency: 'daily',
+    name: initialData?.name || '',
+    dosage: initialData?.dosage || '',
+    unit: initialData?.unit || 'mg',
+    frequency: initialData?.frequency || 'daily',
     totalQuantity: '',
     refillThreshold: '5',
+    endDate: '', // Expiry Date
   });
+
+  const [scheduledTimes, setScheduledTimes] = useState<string[]>(['09:00']);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -42,6 +51,9 @@ export default function AddMedicineModal({ onClose, onSuccess }: Props) {
         frequency: formData.frequency,
         totalQuantity: formData.totalQuantity ? Number(formData.totalQuantity) : null,
         refillThreshold: Number(formData.refillThreshold),
+        endDate: formData.endDate || undefined,
+        scheduledTimes: scheduledTimes,
+        startDate: new Date(),
       });
 
       onSuccess();
@@ -139,6 +151,57 @@ export default function AddMedicineModal({ onClose, onSuccess }: Props) {
                 <option value="weekly">Weekly</option>
                 <option value="as_needed">As Needed</option>
               </select>
+            </div>
+
+            {/* Reminder Times */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-bold text-gray-700 font-bold">Reminder Times</label>
+                <button 
+                  type="button"
+                  onClick={() => setScheduledTimes([...scheduledTimes, '12:00'])}
+                  className="text-xs font-bold text-warm-600 bg-warm-50 px-2 py-1 rounded-lg hover:bg-warm-100"
+                >
+                  + Add Time
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {scheduledTimes.map((time, idx) => (
+                  <div key={idx} className="flex gap-1">
+                    <input
+                      type="time"
+                      value={time}
+                      onChange={(e) => {
+                        const newTimes = [...scheduledTimes];
+                        newTimes[idx] = e.target.value;
+                        setScheduledTimes(newTimes);
+                      }}
+                      className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-xl px-2 py-2 text-sm focus:border-warm-500 outline-none"
+                    />
+                    {scheduledTimes.length > 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => setScheduledTimes(scheduledTimes.filter((_, i) => i !== idx))}
+                        className="text-rose-400 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Expiry Date */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Take Until (Expiry Date)</label>
+              <input
+                type="date"
+                name="endDate"
+                value={formData.endDate}
+                onChange={handleChange}
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3 text-gray-900 font-medium focus:border-warm-500 outline-none"
+              />
             </div>
 
             <div className="flex gap-3">

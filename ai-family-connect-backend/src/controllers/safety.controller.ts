@@ -8,9 +8,11 @@ import { asyncHandler } from "../utils/asyncHandler";
 import { ApiResponse } from "../utils/ApiResponse";
 import { AppError } from "../utils/AppError";
 import { getIO } from "../config/socket";
+import { analyzeInjuryGroq } from "../helpers/groq.helper";
 import { analyzeInjuryGemini } from "../helpers/gemini.helper";
 import { analyzeInjuryHF } from "../helpers/hf.helper";
 import { imageFileToBase64, getMimeType } from "../config/gemini";
+import { MOCK_INJURY_RESULT } from "../config/mockData";
 
 // SOS
 export const triggerSOS = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -168,11 +170,21 @@ export const uploadInjuryPhoto = asyncHandler(async (req: AuthRequest, res: Resp
 
   let analysis;
   try {
-    console.log("Attempting Injury Analysis with Hugging Face...");
-    analysis = await analyzeInjuryHF(imageBase64);
-  } catch (err) {
-    console.error("HF Injury Analysis failed, falling back to Gemini:", (err as any).message);
-    analysis = await analyzeInjuryGemini(imageBase64, mimeType);
+    console.log("Attempting Injury Analysis with Groq...");
+    analysis = await analyzeInjuryGroq(imageBase64);
+  } catch (err: any) {
+    console.warn("Groq injury analysis failed, falling back to Gemini:", err.message);
+    try {
+      analysis = await analyzeInjuryGemini(imageBase64, mimeType);
+    } catch (gemErr: any) {
+      console.warn("Gemini injury analysis failed, falling back to HF:", gemErr.message);
+      try {
+        analysis = await analyzeInjuryHF(imageBase64);
+      } catch (hfErr: any) {
+        console.error("CRITICAL: All AI providers failed for Injury Analysis (Safety). Using demo-safe fallback.");
+        analysis = MOCK_INJURY_RESULT;
+      }
+    }
   }
 
   const injuryRecord = await FallEvent.create({

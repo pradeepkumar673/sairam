@@ -72,7 +72,7 @@ export default function Home() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="min-h-screen bg-warm-50 pb-8">
+    <div className="min-h-screen bg-warm-50 pb-28">
       {/* Header */}
       <div className="bg-white rounded-b-[40px] shadow-sm px-6 pt-12 pb-8 border-b border-warm-100 relative z-20">
         <div className="flex justify-between items-center mb-6">
@@ -193,7 +193,7 @@ export default function Home() {
               </div>
               <div className="space-y-3 mt-2">
               {refillAlerts.map((alert) => (
-                <div key={alert._id} className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100/50 flex flex-col gap-3 text-amber-900">
+                <div key={alert.medicineId} className="bg-white rounded-2xl p-4 shadow-sm border border-amber-100/50 flex flex-col gap-3 text-amber-900">
                   <div className="flex justify-between items-center">
                     <span className="font-bold text-lg">{alert.name}</span>
                     <span className="text-sm font-bold bg-amber-100 px-3 py-1 rounded-full">{alert.currentStock} left</span>

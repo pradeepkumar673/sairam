@@ -9,9 +9,10 @@ import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Camera, Upload, X, CheckCircle, AlertTriangle,
-  Pill, FileText, Loader2, RotateCcw
+  Pill, FileText, Loader2, RotateCcw, Plus
 } from 'lucide-react';
 import api from '../lib/api';
+import AddMedicineModal from './AddMedicineModal';
 
 interface ExtractedMedicine {
   name: string;
@@ -42,6 +43,8 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [addedIndices, setAddedIndices] = useState<number[]>([]);
+  const [activeMedicine, setActiveMedicine] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((f: File) => {
@@ -75,11 +78,10 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
       const res = await api.post('/medicine/scan-slip', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      // Backend returns { slipAnalysis, createdMedicines }
+      // Backend returns { slipAnalysis }
       const analysis: ScanResult = res.data.data.slipAnalysis;
       setResult(analysis);
-      setSaved(true); // backend already creates medicines
-      onMedicinesAdded?.();
+      // Removed setSaved(true) because we now add manually per medicine
     } catch (err: any) {
       setError(
         err.response?.data?.message ||
@@ -96,6 +98,7 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
     setResult(null);
     setError(null);
     setSaved(false);
+    setAddedIndices([]);
   };
 
   return (
@@ -238,7 +241,7 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
                   <div>
                     <p className="font-bold text-emerald-800">Prescription scanned!</p>
                     <p className="text-emerald-700 text-sm">
-                      {result.medicines.length} medicine{result.medicines.length !== 1 ? 's' : ''} extracted &amp; added to your list.
+                      {result.medicines.length} medicine{result.medicines.length !== 1 ? 's' : ''} extracted. Click "+" to add them.
                     </p>
                   </div>
                 </div>
@@ -266,12 +269,33 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
                   </h4>
                   <div className="space-y-3">
                     {result.medicines.map((med, i) => (
-                      <div key={i} className="bg-white border border-warm-100 rounded-2xl p-4 shadow-sm">
-                        <p className="font-bold text-gray-900 text-[16px]">{med.name}</p>
+                      <div key={i} className="bg-white border border-warm-100 rounded-2xl p-4 shadow-sm relative group">
+                        <div className="flex justify-between items-start">
+                          <p className="font-bold text-gray-900 text-[16px]">{med.name}</p>
+                          <button
+                            onClick={() => {
+                              if (!addedIndices.includes(i)) {
+                                setActiveMedicine({
+                                  name: med.name,
+                                  dosage: med.dosage?.replace(/[^0-9]/g, '') || '',
+                                  unit: med.dosage?.includes('ml') ? 'ml' : 'mg',
+                                  frequency: med.frequency?.toLowerCase().includes('daily') ? 'daily' : 'custom'
+                                });
+                              }
+                            }}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
+                              addedIndices.includes(i)
+                                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100 active:scale-95'
+                            }`}
+                          >
+                            {addedIndices.includes(i) ? <CheckCircle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                          </button>
+                        </div>
                         <div className="mt-2 grid grid-cols-2 gap-1 text-sm">
-                          <span className="text-gray-500">Dosage: <span className="text-gray-800 font-medium">{med.dosage || '—'}</span></span>
-                          <span className="text-gray-500">Frequency: <span className="text-gray-800 font-medium">{med.frequency || '—'}</span></span>
-                          <span className="text-gray-500">Duration: <span className="text-gray-800 font-medium">{med.duration || '—'}</span></span>
+                          <span className="text-gray-500">Dosage: <span className="text-gray-800 font-medium">{med.dosage || "-"}</span></span>
+                          <span className="text-gray-500">Frequency: <span className="text-gray-800 font-medium">{med.frequency || "-"}</span></span>
+                          <span className="text-gray-500">Duration: <span className="text-gray-800 font-medium">{med.duration || "-"}</span></span>
                         </div>
                         {med.instructions && (
                           <p className="mt-2 text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">{med.instructions}</p>
@@ -289,7 +313,7 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
                       Warnings
                     </p>
                     {result.warnings.map((w, i) => (
-                      <p key={i} className="text-amber-700 text-sm">• {w}</p>
+                      <p key={i} className="text-amber-700 text-sm">- {w}</p>
                     ))}
                   </div>
                 )}
@@ -306,13 +330,29 @@ export default function DoctorSlipScanner({ onClose, onMedicinesAdded }: DoctorS
                     onClick={onClose}
                     className="flex-1 py-3 bg-warm-500 hover:bg-warm-600 text-white font-bold rounded-2xl transition shadow-lg shadow-warm-500/20"
                   >
-                    Done ✓
+                    Done
                   </button>
                 </div>
               </motion.div>
             )}
           </div>
         </motion.div>
+
+        {activeMedicine && (
+          <AddMedicineModal 
+            initialData={activeMedicine}
+            onClose={() => setActiveMedicine(null)}
+            onSuccess={() => {
+              // Find index of medicine with this name to mark as added
+              const idx = result?.medicines.findIndex(m => m.name === activeMedicine.name);
+              if (idx !== undefined && idx !== -1) {
+                setAddedIndices([...addedIndices, idx]);
+              }
+              setActiveMedicine(null);
+              onMedicinesAdded?.();
+            }}
+          />
+        )}
       </motion.div>
     </AnimatePresence>
   );

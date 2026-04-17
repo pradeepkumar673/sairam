@@ -39,6 +39,7 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [bodyPart, setBodyPart] = useState('');
+  const [description, setDescription] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = useCallback((f: File) => {
@@ -69,6 +70,7 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
       const formData = new FormData();
       formData.append('injuryImage', file);
       if (bodyPart) formData.append('bodyPart', bodyPart);
+      if (description) formData.append('description', description);
       const res = await api.post('/safety/injury-photo', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
@@ -89,6 +91,7 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
     setResult(null);
     setError(null);
     setBodyPart('');
+    setDescription('');
   };
 
   const sStyle = result ? (SEVERITY_STYLES[result.severity] || SEVERITY_STYLES.minor) : null;
@@ -174,13 +177,22 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
 
                 {/* Body part */}
                 {file && (
-                  <input
-                    type="text"
-                    value={bodyPart}
-                    onChange={(e) => setBodyPart(e.target.value)}
-                    placeholder="Body part (e.g. left knee, right hand) — optional"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300"
-                  />
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={bodyPart}
+                      onChange={(e) => setBodyPart(e.target.value)}
+                      placeholder="Where is the injury? (e.g. Right hand, Knee)"
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 transition-all"
+                    />
+                    <textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe symptoms (e.g. Itching, sharp pain, bleeding...)"
+                      rows={2}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 transition-all resize-none"
+                    />
+                  </div>
                 )}
 
                 {error && (
@@ -239,13 +251,13 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
               /* Results */
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                 {/* Severity */}
-                <div className={`border-2 rounded-2xl p-4 ${sStyle!.bg}`}>
-                  <p className={`text-xl font-bold ${sStyle!.text}`}>{sStyle!.label}</p>
-                  <p className={`text-sm mt-1 ${sStyle!.text} opacity-80`}>{result!.possibleInjury}</p>
+                <div className={`border-2 rounded-2xl p-4 ${sStyle?.bg || 'bg-gray-50 border-gray-200'}`}>
+                  <p className={`text-xl font-bold ${sStyle?.text || 'text-gray-800'}`}>{sStyle?.label || 'Unknown Severity'}</p>
+                  <p className={`text-sm mt-1 ${sStyle?.text || 'text-gray-700'} opacity-80`}>{result?.possibleInjury || 'Condition identified.'}</p>
                 </div>
 
                 {/* Emergency banner */}
-                {result!.requiresEmergency && (
+                {result?.requiresEmergency && (
                   <div className="bg-red-600 text-white rounded-2xl p-4 flex items-center gap-3">
                     <AlertTriangle className="w-6 h-6 flex-shrink-0" />
                     <p className="font-bold">CALL EMERGENCY SERVICES (108) NOW</p>
@@ -253,10 +265,12 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
                 )}
 
                 {/* Immediate action */}
-                <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
-                  <p className="font-bold text-orange-800 mb-1">⚡ Immediate Action</p>
-                  <p className="text-orange-700">{result!.immediateAction}</p>
-                </div>
+                {result?.immediateAction && (
+                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4">
+                    <p className="font-bold text-orange-800 mb-1">⚡ Immediate Action</p>
+                    <p className="text-orange-700">{result.immediateAction}</p>
+                  </div>
+                )}
 
                 {/* Care instructions */}
                 <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
@@ -265,7 +279,7 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
                     Care Instructions
                   </p>
                   <ol className="space-y-2">
-                    {result!.careInstructions.map((step, i) => (
+                    {result?.careInstructions?.map((step, i) => (
                       <li key={i} className="flex items-start gap-3 text-gray-700">
                         <span className="w-6 h-6 bg-warm-100 text-warm-700 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">
                           {i + 1}
@@ -273,10 +287,13 @@ export default function WoundIdentifier({ onClose }: WoundIdentifierProps) {
                         {step}
                       </li>
                     ))}
+                    {(!result?.careInstructions || result.careInstructions.length === 0) && (
+                      <p className="text-sm text-gray-500 italic">No specific instructions provided.</p>
+                    )}
                   </ol>
                 </div>
 
-                {result!.requiresDoctor && !result!.requiresEmergency && (
+                {(result?.requiresDoctor && !result?.requiresEmergency) && (
                   <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-blue-800 text-sm font-medium">
                     🏥 Please visit a doctor or clinic for proper treatment.
                   </div>

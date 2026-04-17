@@ -9,7 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 export const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
 export const GEMINI_DEFAULT_CONFIG = {
   temperature: 0.7,
@@ -39,7 +39,21 @@ export interface GeminiCallOptions {
   generationConfig?: Partial<typeof GEMINI_DEFAULT_CONFIG>;
 }
 
+// Shared timestamp for rate limiting (15 requests per minute = 1 request every 4 seconds)
+let lastGeminiCallTime = 0;
+const MIN_INTERVAL_MS = 4000;
+
 export async function callGemini(options: GeminiCallOptions): Promise<string> {
+  // Rate limiting to stay within free tier quotas
+  const now = Date.now();
+  const timeSinceLastCall = now - lastGeminiCallTime;
+  if (timeSinceLastCall < MIN_INTERVAL_MS) {
+    const waitTime = MIN_INTERVAL_MS - timeSinceLastCall;
+    console.log(`[Gemini] Rate limit prevention: waiting ${waitTime}ms...`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  lastGeminiCallTime = Date.now();
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("[Gemini] GEMINI_API_KEY is not configured.");
 

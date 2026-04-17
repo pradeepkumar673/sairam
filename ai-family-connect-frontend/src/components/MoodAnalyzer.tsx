@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Camera, RefreshCw } from 'lucide-react';
+import { X, Camera, RefreshCw, Smile } from 'lucide-react';
 import api from '../lib/api';
 
 interface MoodAnalyzerProps {
@@ -27,6 +27,7 @@ export default function MoodAnalyzer({ onClose, onAnalysisComplete }: MoodAnalyz
     setAnalyzing(true);
     setError(null);
     try {
+      console.log('Converting captured image to blob...');
       const res = await fetch(imageBase64);
       const blob = await res.blob();
       const file = new File([blob], 'mood.jpg', { type: 'image/jpeg' });
@@ -34,11 +35,14 @@ export default function MoodAnalyzer({ onClose, onAnalysisComplete }: MoodAnalyz
       const formData = new FormData();
       formData.append('faceImage', file);
 
+      console.log('Sending mood analysis request...');
       const response = await api.post('/ai/mood-mirror', formData);
+      console.log('Mood analysis success:', response.data.data);
 
       setResult(response.data.data);
       onAnalysisComplete?.(response.data.data);
     } catch (err: any) {
+      console.error('Mood analysis failed:', err);
       setError(err.response?.data?.message || 'Analysis failed. Please try again.');
     } finally {
       setAnalyzing(false);
@@ -99,14 +103,61 @@ export default function MoodAnalyzer({ onClose, onAnalysisComplete }: MoodAnalyz
                 
                 {/* Face Scanning Overlay Animation */}
                 <div className="absolute inset-0 border-[6px] border-black/20 rounded-[32px] pointer-events-none" />
+                
+                {/* Advanced Face Mesh Simulation */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <motion.svg 
+                    viewBox="0 0 200 240" 
+                    className="w-64 h-72 text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 1 }}
+                  >
+                    {/* Geometric Mesh Lines */}
+                    <motion.path
+                      d="M100,40 L60,80 L40,130 L60,180 L100,210 L140,180 L160,130 L140,80 Z M60,80 L100,90 L140,80 M40,130 L80,135 L120,135 L160,130 M60,180 L100,175 L140,180 M100,40 L100,90 L100,135 L100,175 L100,210"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="0.5"
+                      strokeDasharray="4 2"
+                      animate={{ strokeDashoffset: [0, -20] }}
+                      transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                    />
+                    {/* Inner Mesh Details */}
+                    <path d="M70,110 L90,110 M110,110 L130,110 M90,155 L110,155" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+                    
+                    {/* Pulsing Nodes (Dots) */}
+                    {[
+                      {x:100, y:40}, {x:60, y:80}, {x:140, y:80}, {x:40, y:130}, 
+                      {x:160, y:130}, {x:60, y:180}, {x:140, y:180}, {x:100, y:210},
+                      {x:80, y:110}, {x:120, y:110}, {x:100, y:145}, {x:90, y:170}, {x:110, y:170}
+                    ].map((p, i) => (
+                      <motion.circle
+                        key={i}
+                        cx={p.x} cy={p.y} r="1.5"
+                        fill="currentColor"
+                        animate={{ r: [1.5, 2.5, 1.5], opacity: [0.5, 1, 0.5] }}
+                        transition={{ duration: 2, repeat: Infinity, delay: i * 0.1 }}
+                      />
+                    ))}
+                  </motion.svg>
+                </div>
+
+                {/* Vertical Scanning Beam */}
                 <motion.div 
-                  initial={{ top: '10%', opacity: 0.3 }}
-                  animate={{ top: '90%', opacity: [0.3, 0.6, 0.3] }}
-                  transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
-                  className="absolute left-[10%] right-[10%] h-[2px] bg-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)] pointer-events-none"
+                  initial={{ top: '10%', opacity: 0.4 }}
+                  animate={{ top: '90%', opacity: [0.4, 0.8, 0.4] }}
+                  transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+                  className="absolute left-[10%] right-[10%] h-[1.5px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_rgba(34,211,238,0.9)] pointer-events-none"
                 />
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40">
-                   <div className="w-48 h-56 border-2 border-dashed border-yellow-400 rounded-[40px] shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
+                
+                {/* Yellow Face Guide Frame */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                   <motion.div 
+                     animate={{ opacity: [0.4, 0.7, 0.4] }}
+                     transition={{ duration: 3, repeat: Infinity }}
+                     className="w-52 h-64 border-2 border-dashed border-yellow-400/60 rounded-[48px] shadow-[0_0_20px_rgba(250,204,21,0.2)]" 
+                   />
                 </div>
 
                 <motion.button

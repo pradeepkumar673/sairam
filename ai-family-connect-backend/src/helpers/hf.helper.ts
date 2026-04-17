@@ -28,7 +28,7 @@ export async function analyzeFacialMoodHF(
   userName: string,
   userRole: string
 ): Promise<MoodMirrorResult> {
-  const modelId = "dima806/facial_emotions_image_detection";
+  const modelId = "mo-thecreator/vit-Facial-Expression-Recognition";
   
   // Convert base64 to binary buffer
   const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
@@ -51,19 +51,19 @@ export async function analyzeFacialMoodHF(
     throw new Error("Invalid response from Hugging Face");
   }
 
-  // Example HF format: [{ label: 'happy', score: 0.95 }, ...]
+  // mo-thecreator model labels: angry, disgust, fear, happy, neutral, sad, surprise
   const topEmotion = results[0];
   const emotionLabel = topEmotion.label.toLowerCase();
   
-  const subEmotions = results.slice(1, 3).map((r: any) => r.label);
+  const subEmotions = results.slice(1, 4).map((r: any) => r.label);
 
-  const alertFamily = ["sad", "fear", "angry", "disgust"].includes(emotionLabel) && topEmotion.score > 0.7;
+  const alertFamily = ["sad", "fear", "angry", "disgust"].includes(emotionLabel) && topEmotion.score > 0.6;
 
   return {
     emotion: emotionLabel,
     confidence: Math.round(topEmotion.score * 100),
     subEmotions,
-    suggestion: `We noticed you're feeling a bit ${emotionLabel}, ${userName}. Take a deep breath and know your family is here.`,
+    suggestion: `We noticed some ${emotionLabel} in your expression, ${userName}. Remember, your family is just a call away.`,
     alertFamily,
   };
 }

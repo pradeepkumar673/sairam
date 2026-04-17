@@ -31,6 +31,13 @@ import {
   getMemoryFollowUpQuestion
 } from "../helpers/gemini.helper";
 import {
+  analyzeFacialMoodGroq,
+  scanDoctorSlipGroq,
+  analyzeInjuryGroq,
+  suggestRecipeGroq,
+  chatWithCompanionGroq
+} from "../helpers/groq.helper";
+import {
   analyzeFacialMoodHF,
   analyzeVoiceEmotionHF,
   scanDoctorSlipHF,
@@ -39,6 +46,15 @@ import {
   generateSleepStoryHF
 } from "../helpers/hf.helper";
 import { imageFileToBase64, getMimeType } from "../config/gemini";
+import {
+  MOCK_MOOD_RESULT,
+  MOCK_VOICE_RESULT,
+  MOCK_PRESCRIPTION_RESULT,
+  MOCK_INJURY_RESULT,
+  MOCK_RECIPE_RESULT,
+  MOCK_SLEEP_STORY,
+  MOCK_CHAT_RESPONSE
+} from "../config/mockData";
 
 // ── Mood Mirror ───────────────────────────────────────────────────────────────
 export const analyzeMood = asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -49,11 +65,21 @@ export const analyzeMood = asyncHandler(async (req: AuthRequest, res: Response) 
 
   let result;
   try {
-    console.log("Attempting Mood Mirror with Hugging Face...");
-    result = await analyzeFacialMoodHF(imageBase64, user.firstName, user.role);
+    console.log("Attempting Mood Mirror with Groq...");
+    result = await analyzeFacialMoodGroq(imageBase64, user.firstName, user.role);
   } catch (err: any) {
-    console.warn("HF mood analysis failed, falling back to Gemini:", err.message);
-    result = await analyzeFacialMood(imageBase64, user.firstName, user.role);
+    console.warn("Groq mood analysis failed, falling back to Gemini:", err.message);
+    try {
+      result = await analyzeFacialMood(imageBase64, user.firstName, user.role);
+    } catch (geminiErr: any) {
+      console.warn("Gemini mood analysis failed, falling back to HF:", geminiErr.message);
+      try {
+        result = await analyzeFacialMoodHF(imageBase64, user.firstName, user.role);
+      } catch (hfErr: any) {
+        console.error("CRITICAL: All AI providers failed for Mood Mirror. Using demo-safe fallback.");
+        result = { ...MOCK_MOOD_RESULT, suggestion: MOCK_MOOD_RESULT.suggestion.replace("${user.firstName}", user.firstName) };
+      }
+    }
   }
 
   await MoodEntry.create({
@@ -80,8 +106,14 @@ export const analyzeVoiceEmotion = asyncHandler(async (req: AuthRequest, res: Re
     console.log("Attempting Voice Emotion with Hugging Face...");
     result = await analyzeVoiceEmotionHF(input, user.firstName, user.role);
   } catch (err: any) {
-    console.warn("HF voice emotion failed, falling back to Gemini:", err.message);
-    result = await analyzeVoiceEmotionGemini(input, user.firstName, user.role);
+    console.warn("HF voice emotion failed, waiting 2s before Gemini fallback:", err.message);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      result = await analyzeVoiceEmotionGemini(input, user.firstName, user.role);
+    } catch (gemErr: any) {
+      console.error("CRITICAL: All AI providers failed for Voice Emotion. Using demo-safe fallback.");
+      result = MOCK_VOICE_RESULT;
+    }
   }
 
   await MoodEntry.create({
@@ -104,11 +136,21 @@ export const scanPrescription = asyncHandler(async (req: AuthRequest, res: Respo
 
   let result;
   try {
-    console.log("Attempting Prescription Scan with Hugging Face...");
-    result = await scanDoctorSlipHF(imageBase64);
+    console.log("Attempting Prescription Scan with Groq...");
+    result = await scanDoctorSlipGroq(imageBase64);
   } catch (err: any) {
-    console.warn("HF scan failed, falling back to Gemini:", err.message);
-    result = await scanDoctorSlipGemini(imageBase64, mimeType);
+    console.warn("Groq scan failed, falling back to Gemini:", err.message);
+    try {
+      result = await scanDoctorSlipGemini(imageBase64, mimeType);
+    } catch (geminiErr: any) {
+      console.warn("Gemini scan failed, falling back to HF:", geminiErr.message);
+      try {
+        result = await scanDoctorSlipHF(imageBase64);
+      } catch (hfErr: any) {
+        console.error("CRITICAL: All AI providers failed for Prescription Scan. Using demo-safe fallback.");
+        result = MOCK_PRESCRIPTION_RESULT;
+      }
+    }
   }
 
   res.status(200).json(new ApiResponse(200, result, "Prescription scanned."));
@@ -123,11 +165,21 @@ export const analyzeInjury = asyncHandler(async (req: AuthRequest, res: Response
 
   let result;
   try {
-    console.log("Attempting Injury Analysis with Hugging Face...");
-    result = await analyzeInjuryHF(imageBase64);
+    console.log("Attempting Injury Analysis with Groq...");
+    result = await analyzeInjuryGroq(imageBase64);
   } catch (err: any) {
-    console.warn("HF injury analysis failed, falling back to Gemini:", err.message);
-    result = await analyzeInjuryGemini(imageBase64, mimeType);
+    console.warn("Groq injury analysis failed, falling back to Gemini:", err.message);
+    try {
+      result = await analyzeInjuryGemini(imageBase64, mimeType);
+    } catch (geminiErr: any) {
+      console.warn("Gemini injury analysis failed, falling back to HF:", geminiErr.message);
+      try {
+        result = await analyzeInjuryHF(imageBase64);
+      } catch (hfErr: any) {
+        console.error("CRITICAL: All AI providers failed for Injury Analysis. Using demo-safe fallback.");
+        result = MOCK_INJURY_RESULT;
+      }
+    }
   }
 
   res.status(200).json(new ApiResponse(200, result, "Injury analyzed."));
@@ -146,11 +198,21 @@ export const suggestRecipe = asyncHandler(async (req: AuthRequest, res: Response
 
   let result;
   try {
-    console.log("Attempting Recipe Suggestion with Hugging Face...");
-    result = await suggestRecipeHF(finalIngredients, finalRestrictions, finalMood);
-  } catch (err) {
-    console.error("HF Recipe Suggestion failed, falling back to Gemini:", (err as any).message);
-    result = await suggestRecipeGemini(finalIngredients, finalRestrictions, finalMood);
+    console.log("Attempting Recipe Suggestion with Groq...");
+    result = await suggestRecipeGroq(finalIngredients, finalRestrictions, finalMood);
+  } catch (err: any) {
+    console.warn("Groq Recipe Suggestion failed, falling back to Gemini:", err.message);
+    try {
+      result = await suggestRecipeGemini(finalIngredients, finalRestrictions, finalMood);
+    } catch (geminiErr: any) {
+      console.warn("Gemini Recipe Suggestion failed, falling back to HF:", geminiErr.message);
+      try {
+        result = await suggestRecipeHF(finalIngredients, finalRestrictions, finalMood);
+      } catch (hfErr: any) {
+        console.error("CRITICAL: All AI providers failed for Recipe Suggestion. Using demo-safe fallback.");
+        result = { ...MOCK_RECIPE_RESULT, ingredients: [...finalIngredients, ...MOCK_RECIPE_RESULT.ingredients] };
+      }
+    }
   }
 
   res.status(200).json(new ApiResponse(200, result, "Recipes suggested."));
@@ -168,9 +230,18 @@ export const getSleepStory = asyncHandler(async (req: AuthRequest, res: Response
   try {
     console.log("Attempting Sleep Story with Hugging Face...");
     result = await generateSleepStoryHF(user.firstName, mood, preferences);
-  } catch (err) {
-    console.error("HF Sleep Story failed, falling back to Gemini:", (err as any).message);
-    result = await generateSleepStoryGemini(user.firstName, mood, preferences);
+  } catch (err: any) {
+    console.error("HF Sleep Story failed, waiting 2s before Gemini fallback:", err.message);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      result = await generateSleepStoryGemini(user.firstName, mood, preferences);
+    } catch (gemErr: any) {
+      console.error("CRITICAL: All AI providers failed for Sleep Story. Using demo-safe fallback.");
+      result = { 
+        ...MOCK_SLEEP_STORY, 
+        story: MOCK_SLEEP_STORY.story.replace("${user.firstName}", user.firstName) 
+      };
+    }
   }
 
   res.status(200).json(new ApiResponse(200, result, "Sleep story generated."));
@@ -266,7 +337,21 @@ export const checkMedicineInteraction = asyncHandler(async (req: AuthRequest, re
 
 export const companionChat = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { message, conversationHistory } = req.body;
-  const result = await chatWithCompanionGemini(message, conversationHistory || [], req.user);
+  
+  let result;
+  try {
+    console.log("Attempting Companion Chat with Groq...");
+    result = await chatWithCompanionGroq(message, conversationHistory || [], req.user);
+  } catch (err: any) {
+    console.warn("Groq Chat failed, falling back to Gemini:", err.message);
+    try {
+      result = await chatWithCompanionGemini(message, conversationHistory || [], req.user);
+    } catch (gemErr: any) {
+        console.error("CRITICAL: All AI providers failed for Companion Chat. Using demo-safe fallback.");
+        result = MOCK_CHAT_RESPONSE;
+      }
+  }
+  
   res.status(200).json(new ApiResponse(200, result));
 });
 
